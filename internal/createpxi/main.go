@@ -1,0 +1,86 @@
+/*
+Copyright 2025 Pextra Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package createpxi
+
+import (
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/PextraCloud/pxitool/internal/encryption"
+	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
+	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/iend"
+	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/ihdr"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/compressiontype"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/pxiversion"
+	"github.com/PextraCloud/pxitool/pkg/pxi/signature"
+)
+
+func Create(file *os.File, config *conf.InstanceConfigGeneric, compressionType compressiontype.CompressionType, encryptionType encryptiontype.EncryptionType) error {
+	var writer io.Writer = file
+	var err error
+
+	// Write magic number
+	if _, err = writer.Write(signature.PXISignature); err != nil {
+		return fmt.Errorf("failed to write PXI signature: %v", err)
+	}
+	// Write IHDR chunk
+	ihdrChunk := ihdr.New(pxiversion.V1, instancetype.InstanceType(config.Type), compressionType, encryptionType)
+	if err = writeChunk(writer, &ihdrChunk.Chunk); err != nil {
+		return err
+	}
+
+	var encryptedWriter *encryption.EncryptedWriter
+	if encryptionType != encryptiontype.None {
+		encryptedWriter, err = getEncryptedWriter(file)
+		if err != nil {
+			return fmt.Errorf("failed to get encrypted writer: %v", err)
+		}
+
+		writer = encryptedWriter
+	}
+
+	// Write CONF chunk
+	var confChunk *conf.CONF
+	if confChunk, err = conf.New(config); err != nil {
+		return fmt.Errorf("failed to create CONF chunk: %v", err)
+	}
+	if err = writeChunk(writer, &confChunk.Chunk); err != nil {
+		return fmt.Errorf("failed to write CONF chunk: %v", err)
+	}
+
+	// Write IEND chunk
+	iendChunk := iend.New()
+	if err = writeChunk(writer, &iendChunk.Chunk); err != nil {
+		return fmt.Errorf("failed to write IEND chunk: %v", err)
+	}
+
+	// Flush buffers if using encrypted/compressed writer
+	if encryptedWriter != nil {
+		println("Flushing encrypted writer buffers...")
+		if err := encryptedWriter.Close(); err != nil {
+			return fmt.Errorf("failed to close encrypted writer: %v", err)
+		}
+	}
+	if closer, ok := writer.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			return fmt.Errorf("failed to close writer: %v", err)
+		}
+	}
+	return nil
+}
