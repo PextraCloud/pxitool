@@ -13,20 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package readpxi
+package backup
 
 import (
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/encr"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/iend"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/ihdr"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/svol"
+	"fmt"
+	"io"
 )
 
-type PXIChunks struct {
-	IHDR *ihdr.Data   // Required
-	ENCR *encr.Data   // Only if encryption indicated in IHDR
-	CONF *conf.Data   // Required
-	SVOL []*svol.Data // 0 to n
-	IEND *iend.Data   // Required
+func BackupDockerVolume(volumePath string, writeStream *io.Writer) error {
+	return fmt.Errorf("Docker volume backup is not supported yet")
 }

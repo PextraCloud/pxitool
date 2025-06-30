@@ -50,7 +50,7 @@ const (
 // 4-byte chunk type, the data, and finally, a
 // 4-byte CRC checksum.
 func (c *Chunk) Bytes() []byte {
-	if len(c.Data) != int(c.Length) {
+	if c.ChunkType != ChunkTypeSVOL && len(c.Data) != int(c.Length) {
 		panic("Data length does not match chunk Length")
 	}
 	buf := bytes.NewBuffer(nil)
@@ -76,12 +76,15 @@ func printChunk(c *Chunk) {
 
 	fmt.Printf("----- chunk %s -----\n", c.ChunkType)
 	fmt.Printf("Length: %d bytes\n", c.Length)
-	if len(c.Data) > 0 {
-		fmt.Printf("Data: %x\n", c.Data)
-	} else {
-		fmt.Println("Data: <empty>")
+
+	if c.ChunkType != ChunkTypeSVOL {
+		if len(c.Data) > 0 {
+			fmt.Printf("Data: %x\n", c.Data)
+		} else {
+			fmt.Println("Data: <empty>")
+		}
+		fmt.Printf("CRC32: %08x\n", c.CRC)
 	}
-	fmt.Printf("CRC32: %08x\n", c.CRC)
 	fmt.Println("----------------------")
 }
 
@@ -113,9 +116,12 @@ func ParseChunk(r io.Reader) (*Chunk, error) {
 		Length:    length,
 		Data:      chunkData,
 	}
-	c.CRC32()
-	if err := c.VerifyCRC32(crc); err != nil {
-		return nil, err
+
+	if chunkType != ChunkTypeSVOL {
+		c.CRC32()
+		if err := c.VerifyCRC32(crc); err != nil {
+			return nil, err
+		}
 	}
 
 	printChunk(c)

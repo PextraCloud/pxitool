@@ -13,20 +13,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package readpxi
+package utils
 
 import (
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/encr"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/iend"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/ihdr"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/svol"
+	"io"
+	"sync"
 )
 
-type PXIChunks struct {
-	IHDR *ihdr.Data   // Required
-	ENCR *encr.Data   // Only if encryption indicated in IHDR
-	CONF *conf.Data   // Required
-	SVOL []*svol.Data // 0 to n
-	IEND *iend.Data   // Required
+// Wrapper over io.Writer that also counts number of written bytes.
+type CountingWriter struct {
+	W     io.Writer
+	count int64
+	mu    sync.Mutex
+}
+
+func NewCountingWriter(w io.Writer) *CountingWriter {
+	return &CountingWriter{W: w}
+}
+
+func (cw *CountingWriter) Write(p []byte) (int, error) {
+	n, err := cw.W.Write(p)
+	cw.mu.Lock()
+	cw.count += int64(n)
+	cw.mu.Unlock()
+	return n, err
+}
+
+func (cw *CountingWriter) Count() int64 {
+	cw.mu.Lock()
+	defer cw.mu.Unlock()
+	return cw.count
 }

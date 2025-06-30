@@ -79,21 +79,21 @@ func readCONF(reader io.Reader) (*conf.Data, error) {
 	return confChunk, nil
 }
 
-func readIEND(reader io.Reader) (*iend.Data, error) {
+func readSVOL(reader io.Reader) (*svol.Data, error) {
 	var c *chunk.Chunk
 	var err error
 
 	if c, err = chunk.ParseChunk(reader); err != nil {
 		return nil, err
 	}
-	if c.ChunkType != chunk.ChunkTypeIEND {
-		return nil, fmt.Errorf("expected IEND chunk, got %s", c.ChunkType)
+	if c.ChunkType != chunk.ChunkTypeSVOL {
+		return nil, nil // Return nil if chunk type is not SVOL
 	}
 
-	var iendChunk *iend.Data
-	if iendChunk, err = iend.GetDataStruct(&c.Data); err != nil {
-		return nil, fmt.Errorf("error parsing IEND chunk: %w", err)
+	var svolChunk *svol.Data
+	if svolChunk, err = svol.GetDataStruct(c.Data); err != nil {
+		return nil, fmt.Errorf("error parsing SVOL chunk: %w", err)
 	}
 
-	return iendChunk, nil
+	return svolChunk, nil
 }

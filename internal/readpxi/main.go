@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/svol"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
 )
 
@@ -73,11 +74,19 @@ func Read(path string) (*PXIChunks, error) {
 	}
 	result.CONF = confData
 
-	iendData, err := readIEND(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read IEND chunk: %w", err)
+	var svols []*svol.Data
+	for {
+		svol, err := readSVOL(reader)
+		// IEND chunk found
+		if svol == nil && err == nil {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read SVOL chunk: %w", err)
+		}
+		svols = append(svols, svol)
 	}
-	result.IEND = iendData
+	result.SVOL = svols
 
 	if closer, ok := file.(io.Closer); ok {
 		if err := closer.Close(); err != nil {

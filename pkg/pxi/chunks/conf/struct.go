@@ -18,20 +18,14 @@ package conf
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumetype"
 )
 
 type InstanceCPUInfo struct {
 	Sockets uint8 `json:"sockets"`
 	Cores   uint8 `json:"cores"`
 	Threads uint8 `json:"threads"`
-}
-
-type InstanceDevice struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	Type        uint8          `json:"type"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
-	Creation    string         `json:"creation,omitempty"`
 }
 
 type InstanceMetadataDocker struct {
@@ -65,6 +59,12 @@ type InstanceMetadata struct {
 	Qemu   *InstanceMetadataQemu   `json:"qemu,omitempty"`
 }
 
+type InstanceVolume struct {
+	ID   string                `json:"id"`
+	Type volumetype.VolumeType `json:"type"`
+	Path string                `json:"path"`
+}
+
 type InstanceConfig struct {
 	ID          string          `json:"id,omitempty"`
 	NodeID      string          `json:"node_id,omitempty"`
@@ -75,12 +75,13 @@ type InstanceConfig struct {
 	Cpu         InstanceCPUInfo `json:"cpu,omitzero"`
 	Memory      uint32          `json:"memory,omitempty"` // MiB
 	Metadata    struct {
-		Type string         `json:"_type"`                  // "qemu", "lxc", "docker_podman"
-		Data map[string]any `json:"data" json:",omitempty"` // Flexible metadata structure
+		Type string         `json:"_type"`          // "qemu", "lxc", "docker_podman"
+		Data map[string]any `json:"data,omitempty"` // Flexible metadata structure
 	} `json:"metadata"`
-	Autostart bool   `json:"autostart,omitempty"`
-	BootOrder int8   `json:"boot_order,omitempty"`
-	Creation  string `json:"creation,omitempty"`
+	Volumes   []InstanceVolume `json:"volumes"`
+	Autostart bool             `json:"autostart,omitempty"`
+	BootOrder int8             `json:"boot_order,omitempty"`
+	Creation  string           `json:"creation,omitempty"`
 }
 type InstanceConfigGeneric struct {
 	InstanceConfig `json:",inline"`

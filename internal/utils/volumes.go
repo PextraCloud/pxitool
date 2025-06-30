@@ -13,20 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package readpxi
+package utils
 
-import (
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/encr"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/iend"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/ihdr"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/svol"
-)
+import "github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
 
-type PXIChunks struct {
-	IHDR *ihdr.Data   // Required
-	ENCR *encr.Data   // Only if encryption indicated in IHDR
-	CONF *conf.Data   // Required
-	SVOL []*svol.Data // 0 to n
-	IEND *iend.Data   // Required
+// Extracts volume paths from the configuration, excluding specified IDs.
+func GetVolumePathsFromConfig(config *conf.InstanceConfigGeneric, excluded []string) []string {
+	excludedSet := make(map[string]struct{}, len(excluded))
+	for _, id := range excluded {
+		excludedSet[id] = struct{}{}
+	}
+
+	var paths []string
+	for _, v := range config.Volumes {
+		if _, found := excludedSet[v.ID]; !found {
+			paths = append(paths, v.Path)
+		}
+	}
+	return paths
 }

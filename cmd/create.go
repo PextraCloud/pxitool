@@ -30,9 +30,8 @@ var jsonFilePath string
 var outputFileName string
 var forceOverwrite bool
 var encryptionTypeString string
-
-// volume id -> volume path
-var volumePaths map[string]string
+var excluded []string
+var rootfsPath string
 
 func init() {
 	rootCmd.AddCommand(createCmd)
@@ -48,7 +47,10 @@ func init() {
 
 	createCmd.Flags().StringVarP(&encryptionTypeString, "encryption", "e", "aes-256-gcm", "Encryption type to use for the Pextra Image (default: aes-256-gcm). Supported: aes-256-gcm, none. You will be prompted for a password if encryption is enabled.")
 
-	createCmd.Flags().StringToStringVarP(&volumePaths, "volumes", "v", nil, "Map of volume IDs to paths (e.g., --volumes id1=/dev/zvol/pool/vol1,id2=/mnt/data/vol.qcow2)")
+	createCmd.Flags().StringArrayVarP(&excluded, "exclude", "x", nil, "List of volume IDs to exclude from the Pextra Image. Can be specified multiple times.")
+
+	createCmd.Flags().StringVarP(&rootfsPath, "rootfs", "r", "", "Path to the root filesystem for LXC instances (required). This option is ignored for other instance types.")
+	createCmd.MarkFlagDirname("rootfs")
 }
 
 var createCmd = &cobra.Command{
@@ -87,7 +89,7 @@ data.`,
 			os.Exit(1)
 		}
 
-		err = createpxi.Create(file, json, compressiontype.None, encryptionType)
+		err = createpxi.Create(file, json, compressiontype.None, encryptionType, excluded)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating Pextra Image: %v\n", err)
 			os.Exit(1)
