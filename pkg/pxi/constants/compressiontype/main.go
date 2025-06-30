@@ -21,18 +21,12 @@ type CompressionType uint8
 
 const (
 	None CompressionType = iota
-	ZSTD
-	LZ4
 )
 
 func (ct CompressionType) String() string {
 	switch ct {
 	case None:
 		return "None"
-	case ZSTD:
-		return "ZSTD"
-	case LZ4:
-		return "LZ4"
 	default:
 		panic(fmt.Sprintf("Unknown CompressionType: %d", ct))
 	}
