@@ -22,8 +22,8 @@ import (
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunk"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/encr"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/iend"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/ihdr"
+	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/svol"
 )
 
 func readIHDR(reader io.Reader) (*ihdr.Data, error) {
