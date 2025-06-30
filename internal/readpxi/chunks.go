@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunk"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/encr"
@@ -41,6 +42,8 @@ func readIHDR(reader io.Reader) (*ihdr.Data, error) {
 	if ihdrChunk, err = ihdr.GetDataStruct(c.Data); err != nil {
 		return nil, fmt.Errorf("error parsing IHDR chunk: %w", err)
 	}
+
+	log.Debug("Version=%s, InstanceType=%s, Compression=%s, Encryption=%s", ihdrChunk.PXIVersion, ihdrChunk.InstanceType, ihdrChunk.CompressionType, ihdrChunk.EncryptionType)
 	return ihdrChunk, nil
 }
 func readENCR(reader io.Reader) (*encr.Data, error) {
@@ -58,6 +61,8 @@ func readENCR(reader io.Reader) (*encr.Data, error) {
 	if encrChunk, err = encr.GetDataStruct(c.Data); err != nil {
 		return nil, fmt.Errorf("error parsing ENCR chunk: %w", err)
 	}
+
+	log.Debug("AEAD=%x Nonce=%x, Salt=%x", encrChunk.AEAD, encrChunk.Nonce, encrChunk.Salt)
 	return encrChunk, nil
 }
 func readCONF(reader io.Reader) (*conf.Data, error) {
@@ -87,6 +92,7 @@ func readSVOL(reader io.Reader) (*svol.Data, error) {
 		return nil, err
 	}
 	if c.ChunkType != chunk.ChunkTypeSVOL {
+		log.Debug("Finished reading SVOL chunks")
 		return nil, nil // Return nil if chunk type is not SVOL
 	}
 

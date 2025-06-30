@@ -19,8 +19,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
+
+	"github.com/PextraCloud/pxitool/pkg/log"
 )
 
 // Generic structure for a PXI chunk.
@@ -74,18 +75,18 @@ func printChunk(c *Chunk) {
 		return
 	}
 
-	fmt.Printf("----- chunk %s -----\n", c.ChunkType)
-	fmt.Printf("Length: %d bytes\n", c.Length)
+	log.Debug("----- chunk %s -----", c.ChunkType)
+	log.Debug("Length: %d bytes", c.Length)
 
 	if c.ChunkType != ChunkTypeSVOL {
 		if len(c.Data) > 0 {
-			fmt.Printf("Data: %x\n", c.Data)
+			log.Debug("Data: %x", c.Data)
 		} else {
-			fmt.Println("Data: <empty>")
+			log.Debug("Data: <empty>")
 		}
-		fmt.Printf("CRC32: %08x\n", c.CRC)
+		log.Debug("CRC32: %08x", c.CRC)
 	}
-	fmt.Println("----------------------")
+	log.Debug("----------------------")
 }
 
 // Parses a chunk from the provided io.Reader.
@@ -102,7 +103,7 @@ func ParseChunk(r io.Reader) (*Chunk, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Reading chunk type: %s, length: %d bytes\n", chunkType, length)
+	log.Debug("Reading chunk type: %s, length: %d bytes\n", chunkType, length)
 	chunkData := make([]byte, length)
 	if _, err := io.ReadFull(r, chunkData); err != nil {
 		return nil, err

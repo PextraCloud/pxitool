@@ -33,7 +33,5 @@ func GetConfChunkJSON(path string) (*conf.InstanceConfigGeneric, error) {
 	if err := configGeneric.UnmarshalDUnionJSON(data); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON config: %w", err)
 	}
-
-	fmt.Printf("Parsed InstanceConfig: %+v\n", configGeneric.Metadata.Qemu)
 	return &configGeneric, nil
 }

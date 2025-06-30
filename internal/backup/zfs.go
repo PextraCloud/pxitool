@@ -20,6 +20,8 @@ import (
 	"io"
 	"os/exec"
 	"time"
+
+	"github.com/PextraCloud/pxitool/pkg/log"
 )
 
 func pathToZFSDataset(volumePath string) string {
@@ -37,7 +39,6 @@ func BackupZFSVolume(volumePath string, writeStream io.Writer) error {
 
 	timestamp := time.Now().Format("20060102150405")
 	snapshotName := fmt.Sprintf("%s@pxitool_%s", dataset, timestamp)
-	fmt.Printf("Creating ZFS snapshot: %s\n", snapshotName)
 
 	// Create snapshot
 	createCmd := exec.Command("zfs", "snapshot", snapshotName)
@@ -47,7 +48,9 @@ func BackupZFSVolume(volumePath string, writeStream io.Writer) error {
 	// Destroy snapshot after sending
 	defer func() {
 		deleteCmd := exec.Command("zfs", "destroy", snapshotName)
-		_ = deleteCmd.Run()
+		if err := deleteCmd.Run(); err != nil {
+			log.Warn("Failed to destroy ZFS snapshot %s: %v", snapshotName, err)
+		}
 	}()
 
 	cmd := exec.Command("zfs", "send", snapshotName)

@@ -23,6 +23,7 @@ import (
 	"github.com/PextraCloud/pxitool/internal/backup"
 	"github.com/PextraCloud/pxitool/internal/encryption"
 	"github.com/PextraCloud/pxitool/internal/utils"
+	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/conf"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/iend"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/ihdr"
@@ -69,7 +70,7 @@ func Create(file *os.File, config *conf.InstanceConfigGeneric, compressionType c
 
 	// Write volumes, excluding specified ones
 	volumes := utils.GetVolumePathsFromConfig(config, excludedVolumes)
-	fmt.Printf("Backing up %d volumes...\n", len(volumes))
+	log.Debug("Backing up %d volumes, excluding %d volumes: %v", len(config.Volumes), len(excludedVolumes), excludedVolumes)
 	for i, volumePath := range volumes {
 		// Save before position seek
 		// Save current file position to later update SVOL chunk length
@@ -85,12 +86,12 @@ func Create(file *os.File, config *conf.InstanceConfigGeneric, compressionType c
 			return fmt.Errorf("failed to write SVOL chunk for volume %s: %v", volumePath, err)
 		}
 
-		fmt.Printf("Backing up volume %d/%d: %s\n", i+1, len(volumes), volumePath)
+		log.Debug("Backing up volume %d/%d: %s", i+1, len(volumes), volumePath)
 		var bytesWritten int64
 		if bytesWritten, err = backup.BackupVolume(volumePath, config.Volumes[i].Type, writer); err != nil {
 			return fmt.Errorf("failed to backup volume %s: %v", volumePath, err)
 		}
-		fmt.Printf("Volume %d/%d backed up successfully (%d bytes written).\n", i+1, len(volumes), bytesWritten)
+		log.Debug("Volume %d/%d backed up successfully (%d bytes written).", i+1, len(volumes), bytesWritten)
 
 		// Increment SVOL chunk length
 		svol.IncrementLength(svolChunk, uint64(bytesWritten))
@@ -107,7 +108,6 @@ func Create(file *os.File, config *conf.InstanceConfigGeneric, compressionType c
 				return fmt.Errorf("failed to seek back to end of file after updating SVOL chunk: %v", err)
 			}
 		}
-		println("Volume backup completed successfully.")
 	}
 
 	// Write IEND chunk
@@ -118,7 +118,7 @@ func Create(file *os.File, config *conf.InstanceConfigGeneric, compressionType c
 
 	// Flush buffers if using encrypted/compressed writer
 	if encryptedWriter != nil {
-		println("Flushing encrypted writer buffers...")
+		log.Debug("Flushing encrypted writer buffers...")
 		if err := encryptedWriter.Close(); err != nil {
 			return fmt.Errorf("failed to close encrypted writer: %v", err)
 		}

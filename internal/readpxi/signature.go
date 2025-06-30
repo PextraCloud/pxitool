@@ -18,6 +18,7 @@ package readpxi
 import (
 	"io"
 
+	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/PextraCloud/pxitool/pkg/pxi/signature"
 )
 
@@ -30,5 +31,6 @@ func verifySignature(reader io.Reader) error {
 		return err
 	}
 
+	log.Debug("PXI signature verification passed")
 	return nil
 }

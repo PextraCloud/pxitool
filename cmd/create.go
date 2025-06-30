@@ -16,11 +16,11 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/PextraCloud/pxitool/internal/createpxi"
 	"github.com/PextraCloud/pxitool/internal/utils"
+	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/compressiontype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
 	"github.com/spf13/cobra"
@@ -62,7 +62,7 @@ data.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		json, err := utils.GetConfChunkJSON(jsonFilePath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading JSON config: %v\n", err)
+			log.Error("Error reading JSON config: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -73,7 +73,7 @@ data.`,
 
 		file, err := utils.GetOutputFileHandle(outputFileName, forceOverwrite)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error opening output file: %v\n", err)
+			log.Error("Error opening output file: %v\n", err)
 			os.Exit(1)
 		}
 		defer file.Close()
@@ -85,15 +85,15 @@ data.`,
 		case "none":
 			encryptionType = encryptiontype.None
 		default:
-			fmt.Fprintf(os.Stderr, "Unsupported encryption type: %s. Supported: aes-256-gcm, none.\n", encryptionTypeString)
+			log.Error("Unsupported encryption type: %s. Supported: aes-256-gcm, none.\n", encryptionTypeString)
 			os.Exit(1)
 		}
 
 		err = createpxi.Create(file, json, compressiontype.None, encryptionType, excluded)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating Pextra Image: %v\n", err)
+			log.Error("Error creating Pextra Image: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Pextra Image created successfully: %s\n", outputFileName)
+		log.Info("Pextra Image created successfully: %s\n", outputFileName)
 	},
 }

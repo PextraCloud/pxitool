@@ -22,6 +22,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/PextraCloud/pxitool/pkg/log"
 )
 
 func pathToLVMVolume(volumePath string) (string, string) { // vgname, lvname
@@ -57,7 +59,7 @@ func BackupLVMVolume(volumePath string, writeStream io.Writer) error {
 	defer func() {
 		deleteCmd := exec.Command("lvremove", "-f", fmt.Sprintf("/dev/%s/%s", vgName, snapshotName))
 		if err := deleteCmd.Run(); err != nil {
-			fmt.Printf("Warning: failed to destroy LVM snapshot %s: %v\n", snapshotName, err)
+			log.Warn("Failed to destroy LVM snapshot %s: %v", snapshotName, err)
 		}
 	}()
 

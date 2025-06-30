@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/PextraCloud/pxitool/internal/readpxi"
+	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/spf13/cobra"
 )
 
@@ -44,14 +45,14 @@ metadata contained within the image.`,
 		inputFileName := args[0]
 		result, err := readpxi.Read(inputFileName)
 		if err != nil {
-			cmd.PrintErrf("Error reading PXI file: %v\n", err)
+			log.Error("Error reading PXI file: %v", err)
 			os.Exit(1)
 		}
 
 		if isMetadataDump {
 			var jsonData []byte
 			if jsonData, err = json.MarshalIndent(result.CONF.Config, "", "    "); err != nil {
-				cmd.PrintErrf("Error serializing metadata to JSON: %v\n", err)
+				log.Error("Error serializing metadata to JSON: %v", err)
 				os.Exit(1)
 			}
 			fmt.Println(string(jsonData))

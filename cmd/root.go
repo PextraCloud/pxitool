@@ -16,11 +16,13 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/spf13/cobra"
 )
+
+var debugFlag bool
 
 var rootCmd = &cobra.Command{
 	Use:   "pxitool",
@@ -32,11 +34,18 @@ https://pextracloud.github.io/ImageFormats/pxi.
 
 Copyright (C) 2025 Pextra Inc. This tool is licensed
 under the Apache License, Version 2.0.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		log.SetDebug(debugFlag)
+	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug logging")
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Error("%v", err)
 		os.Exit(1)
 	}
 }
