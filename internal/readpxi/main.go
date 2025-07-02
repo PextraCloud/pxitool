@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/svol"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
 )
 
@@ -33,8 +32,17 @@ func openFile(path string) (io.Reader, error) {
 	return file, nil
 }
 
+func closeFile(file io.Reader) error {
+	if closer, ok := file.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			return fmt.Errorf("failed to close file: %w", err)
+		}
+	}
+	return nil
+}
+
 // Reads a PXI file and returns its chunks.
-func Read(path string) (*PXIChunks, error) {
+func ReadChunks(path string) (*PXIChunks, error) {
 	file, err := openFile(path)
 	if err != nil {
 		return nil, err
@@ -74,24 +82,93 @@ func Read(path string) (*PXIChunks, error) {
 	}
 	result.CONF = confData
 
-	var svols []*svol.Data
-	for {
-		svol, err := readSVOL(reader)
-		// IEND chunk found
-		if svol == nil && err == nil {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to read SVOL chunk: %w", err)
-		}
-		svols = append(svols, svol)
+	svols, err := readSVOLUntilIEND(reader)
+	if err != nil {
+		return nil, err
 	}
 	result.SVOL = svols
 
-	if closer, ok := file.(io.Closer); ok {
-		if err := closer.Close(); err != nil {
-			return nil, fmt.Errorf("failed to close file: %w", err)
-		}
+	if err := closeFile(file); err != nil {
+		return nil, err
 	}
 	return result, nil
+}
+
+// Reads a PXI file and skips encrypted chunks, returning its chunks.
+func ReadChunksSkipEncrypted(path string) (*PXIChunks, error) {
+	file, err := openFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := verifySignature(file); err != nil {
+		return nil, fmt.Errorf("signature verification failed: %w", err)
+	}
+
+	result := &PXIChunks{}
+
+	buf := bufio.NewReader(file)
+	ihdrData, err := readIHDR(buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read IHDR chunk: %w", err)
+	}
+	result.IHDR = ihdrData
+
+	reader := io.Reader(buf)
+	if ihdrData.EncryptionType != encryptiontype.None {
+		encrData, err := readENCR(reader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read ENCR chunk: %w", err)
+		}
+		result.ENCR = encrData
+
+		return result, nil
+	}
+
+	confData, err := readCONF(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CONF chunk: %w", err)
+	}
+	result.CONF = confData
+
+	svols, err := readSVOLUntilIEND(reader)
+	if err != nil {
+		return nil, err
+	}
+	result.SVOL = svols
+
+	if err := closeFile(file); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// Reads a PXI file and returns information about it
+func GetInfo(path string, skipEncrypted bool) (*ReadPXIOutput, error) {
+	var chunks *PXIChunks
+	var err error
+	if skipEncrypted {
+		chunks, err = ReadChunksSkipEncrypted(path)
+	} else {
+		chunks, err = ReadChunks(path)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	output := &ReadPXIOutput{
+		PXIVersion:      chunks.IHDR.PXIVersion,
+		InstanceType:    chunks.IHDR.InstanceType,
+		CompressionType: chunks.IHDR.CompressionType,
+		EncryptionType:  chunks.IHDR.EncryptionType,
+		Config:          nil,
+		Volumes:         nil,
+	}
+	// Only if skipEncrypted is false
+	if chunks.CONF != nil {
+		output.Config = &chunks.CONF.Config
+		output.Volumes = chunks.CONF.Config.Volumes
+	}
+
+	return output, nil
 }

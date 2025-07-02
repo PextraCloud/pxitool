@@ -25,12 +25,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var isMetadataDump bool
+var isInfoInJson bool
+var skipEncryptedChunks bool
 
 func init() {
 	rootCmd.AddCommand(infoCmd)
-
-	infoCmd.Flags().BoolVarP(&isMetadataDump, "metadata", "m", false, "Dump PXI metadata in JSON format")
+	infoCmd.Flags().BoolVarP(&skipEncryptedChunks, "skip-encrypted", "s", false, `Skip encrypted chunks in the PXI file if they are present
+This will not read the encrypted config and volumes`)
+	infoCmd.Flags().BoolVarP(&isInfoInJson, "json", "j", false, "Output information in JSON format")
 }
 
 var infoCmd = &cobra.Command{
@@ -39,23 +41,31 @@ var infoCmd = &cobra.Command{
 	Short: "Display information about a Pextra Image",
 	Long: `This command displays information about a
 Pextra Image (.pxi) file. It checks the file structure,
-verifies the integrity of the chunks, and outputs the
-metadata contained within the image.`,
+verifies the integrity of the chunks, and outputs
+information about the image`,
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFileName := args[0]
-		result, err := readpxi.Read(inputFileName)
+		result, err := readpxi.GetInfo(inputFileName, skipEncryptedChunks)
 		if err != nil {
 			log.Error("Error reading PXI file: %v", err)
 			os.Exit(1)
 		}
 
-		if isMetadataDump {
+		if isInfoInJson {
 			var jsonData []byte
-			if jsonData, err = json.MarshalIndent(result.CONF.Config, "", "    "); err != nil {
-				log.Error("Error serializing metadata to JSON: %v", err)
+			if jsonData, err = json.MarshalIndent(result, "", "    "); err != nil {
+				log.Error("Error serializing PXI info to JSON: %v", err)
 				os.Exit(1)
 			}
 			fmt.Println(string(jsonData))
+		} else {
+			log.Info("PXI File: %s", inputFileName)
+			log.Info("Version=%s, InstanceType=%s, Compression=%s, Encryption=%s", result.PXIVersion, result.InstanceType, result.CompressionType, result.EncryptionType)
+			if result.Config != nil {
+				log.Info("Config: can be viewed by passing the '--json' flag")
+			} else {
+				log.Info("Config: <nil> (encrypted chunks skipped)")
+			}
 		}
 	},
 }

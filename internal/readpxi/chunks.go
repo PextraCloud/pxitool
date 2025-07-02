@@ -103,3 +103,19 @@ func readSVOL(reader io.Reader) (*svol.Data, error) {
 
 	return svolChunk, nil
 }
+
+func readSVOLUntilIEND(reader io.Reader) ([]*svol.Data, error) {
+	var svols []*svol.Data
+	for {
+		svol, err := readSVOL(reader)
+		// IEND chunk found
+		if svol == nil && err == nil {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read SVOL chunk: %w", err)
+		}
+		svols = append(svols, svol)
+	}
+	return svols, nil
+}

@@ -21,6 +21,10 @@ import (
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/iend"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/ihdr"
 	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/svol"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/compressiontype"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/pxiversion"
 )
 
 type PXIChunks struct {
@@ -29,4 +33,13 @@ type PXIChunks struct {
 	CONF *conf.Data   // Required
 	SVOL []*svol.Data // 0 to n
 	IEND *iend.Data   // Required
+}
+
+type ReadPXIOutput struct {
+	PXIVersion      pxiversion.PXIVersion           `json:"version"`
+	InstanceType    instancetype.InstanceType       `json:"instance_type"`
+	CompressionType compressiontype.CompressionType `json:"compression_type"`
+	EncryptionType  encryptiontype.EncryptionType   `json:"encryption_type"`
+	Config          *conf.InstanceConfigGeneric     `json:"config,omitempty"`  // nil if encrypted chunks are skipped
+	Volumes         []conf.InstanceVolume           `json:"volumes,omitempty"` // nil if encrypted chunks are skipped
 }
