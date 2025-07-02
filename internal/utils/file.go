@@ -46,7 +46,7 @@ func GetOutputFileHandle(name string, force bool) (*os.File, error) {
 		flags |= os.O_EXCL
 	}
 
-	file, err := os.OpenFile(name, flags, 0644)
+	file, err := os.OpenFile(name, flags, 0640)
 	if err != nil {
 		// If file exists and not forcing, prompt user to overwrite
 		if os.IsExist(err) && !force && promptOverwrite(name) {
