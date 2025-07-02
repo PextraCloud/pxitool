@@ -37,6 +37,11 @@ func calculateChunkCRC32(data *[]byte) uint32 {
 
 // Calculates and sets the CRC32 checksum (big-endian) for the chunk data.
 func (c *Chunk) CRC32() uint32 {
+	if c.ChunkType == ChunkTypeSVOL {
+		c.CRC = 0
+		return c.CRC
+	}
+
 	if c.CRC != 0 {
 		return c.CRC
 	} else if c.Data == nil || len(c.Data) == 0 {
