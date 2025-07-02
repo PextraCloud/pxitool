@@ -63,6 +63,7 @@ type InstanceVolume struct {
 	ID   string                `json:"id"`
 	Type volumetype.VolumeType `json:"type"`
 	Path string                `json:"path"`
+	Size uint64                `json:"size,omitempty"` // Optional size in bytes
 }
 
 type InstanceConfig struct {
