@@ -40,6 +40,7 @@ type ReadPXIOutput struct {
 	InstanceType    instancetype.InstanceType       `json:"instance_type"`
 	CompressionType compressiontype.CompressionType `json:"compression_type"`
 	EncryptionType  encryptiontype.EncryptionType   `json:"encryption_type"`
-	Config          *conf.InstanceConfigGeneric     `json:"config,omitempty"`  // nil if encrypted chunks are skipped
-	Volumes         []conf.InstanceVolume           `json:"volumes,omitempty"` // nil if encrypted chunks are skipped
+	Config          *conf.InstanceConfigGeneric     `json:"config,omitempty"` // nil if encrypted chunks are skipped
+	// List of volume IDs that are present in the PXI file as SVOL chunks
+	Volumes []string `json:"volumes,omitempty"` // nil if encrypted chunks are skipped
 }

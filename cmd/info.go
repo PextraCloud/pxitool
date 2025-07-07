@@ -61,6 +61,7 @@ information about the image`,
 		} else {
 			log.Info("PXI File: %s", inputFileName)
 			log.Info("Version=%s, InstanceType=%s, Compression=%s, Encryption=%s", result.PXIVersion, result.InstanceType, result.CompressionType, result.EncryptionType)
+			log.Info("%d volumes in config, of which %d are present in the PXI file", len(result.Config.Volumes), len(result.Volumes))
 			if result.Config != nil {
 				log.Info("Config: can be viewed by passing the '--json' flag")
 			} else {
