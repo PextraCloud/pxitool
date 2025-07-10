@@ -43,4 +43,5 @@ type ReadPXIOutput struct {
 	Config          *conf.InstanceConfigGeneric     `json:"config,omitempty"` // nil if encrypted chunks are skipped
 	// List of volume IDs that are present in the PXI file as SVOL chunks
 	Volumes []string `json:"volumes,omitempty"` // nil if encrypted chunks are skipped
+	Path    string   `json:"path"`              // Absolute path to the PXI file
 }

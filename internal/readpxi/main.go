@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
 )
@@ -156,6 +157,15 @@ func GetInfo(path string, skipEncrypted bool) (*ReadPXIOutput, error) {
 		return nil, err
 	}
 
+	// If not absolute, convert to absolute path
+	absPath := path
+	if !filepath.IsAbs(path) {
+		absPath, err = filepath.Abs(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert path to absolute: %w", err)
+		}
+	}
+
 	output := &ReadPXIOutput{
 		PXIVersion:      chunks.IHDR.PXIVersion,
 		InstanceType:    chunks.IHDR.InstanceType,
@@ -163,6 +173,7 @@ func GetInfo(path string, skipEncrypted bool) (*ReadPXIOutput, error) {
 		EncryptionType:  chunks.IHDR.EncryptionType,
 		Config:          nil,
 		Volumes:         nil,
+		Path:            absPath,
 	}
 	// Only if skipEncrypted is false
 	if chunks.CONF != nil {

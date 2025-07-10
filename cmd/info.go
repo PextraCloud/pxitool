@@ -59,7 +59,7 @@ information about the image`,
 			}
 			fmt.Println(string(jsonData))
 		} else {
-			log.Info("PXI File: %s", inputFileName)
+			log.Info("PXI File: %s", result.Path)
 			log.Info("Version=%s, InstanceType=%s, Compression=%s, Encryption=%s", result.PXIVersion, result.InstanceType, result.CompressionType, result.EncryptionType)
 			log.Info("%d volumes in config, of which %d are present in the PXI file", len(result.Config.Volumes), len(result.Volumes))
 			if result.Config != nil {
