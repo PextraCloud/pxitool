@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumetype"
 )
 
@@ -68,14 +69,14 @@ type InstanceVolume struct {
 }
 
 type InstanceConfig struct {
-	ID          string          `json:"id,omitempty"`
-	NodeID      string          `json:"node_id,omitempty"`
-	Type        uint8           `json:"type"`
-	InternalID  string          `json:"internal_id,omitempty"`
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	Cpu         InstanceCPUInfo `json:"cpu,omitzero"`
-	Memory      uint32          `json:"memory,omitempty"` // MiB
+	ID          string                    `json:"id,omitempty"`
+	NodeID      string                    `json:"node_id,omitempty"`
+	Type        instancetype.InstanceType `json:"type"`
+	InternalID  string                    `json:"internal_id,omitempty"`
+	Name        string                    `json:"name"`
+	Description string                    `json:"description,omitempty"`
+	Cpu         InstanceCPUInfo           `json:"cpu,omitzero"`
+	Memory      uint32                    `json:"memory,omitempty"` // MiB
 	Metadata    struct {
 		Type string         `json:"_type"`          // "qemu", "lxc", "docker_podman"
 		Data map[string]any `json:"data,omitempty"` // Flexible metadata structure
