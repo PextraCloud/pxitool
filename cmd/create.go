@@ -91,6 +91,7 @@ data.`,
 
 		err = createpxi.Create(file, json, compressiontype.None, encryptionType, excluded)
 		if err != nil {
+			os.Remove(outputFileName)
 			log.Error("Error creating Pextra Image: %v\n", err)
 			os.Exit(1)
 		}
