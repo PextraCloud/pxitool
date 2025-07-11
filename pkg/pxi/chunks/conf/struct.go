@@ -60,10 +60,11 @@ type InstanceMetadata struct {
 }
 
 type InstanceVolume struct {
-	ID   string                `json:"id"`
-	Type volumetype.VolumeType `json:"type"`
-	Path string                `json:"path"`
-	Size uint64                `json:"size,omitempty"` // Optional size in bytes
+	ID            string                `json:"id"`
+	Type          volumetype.VolumeType `json:"type"`
+	StoragePoolID string                `json:"storage_pool_id"`
+	Path          string                `json:"path"`
+	Size          uint64                `json:"size,omitempty"` // Optional size in bytes
 }
 
 type InstanceConfig struct {
