@@ -26,6 +26,7 @@ const (
 	NetFS
 	RBD
 	ZFS
+	LXC_
 )
 
 func (v VolumeType) String() string {
@@ -42,6 +43,8 @@ func (v VolumeType) String() string {
 		return "rbd"
 	case ZFS:
 		return "zfs"
+	case LXC_:
+		return "lxc rootfs"
 	default:
 		panic(fmt.Sprintf("unknown volume type: %d", v))
 	}
@@ -65,6 +68,8 @@ func (v *VolumeType) UnmarshalText(text []byte) error {
 		*v = RBD
 	case "zfs":
 		*v = ZFS
+	case "lxc rootfs":
+		*v = LXC_
 	default:
 		return fmt.Errorf("unknown volume type: %q", s)
 	}

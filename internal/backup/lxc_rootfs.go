@@ -20,9 +20,9 @@ import (
 	"os/exec"
 )
 
-func BackupLXCRootfs(filePath string, writeStream *io.Writer) error {
+func BackupLXCRootfs(filePath string, writeStream io.Writer) error {
 	cmd := exec.Command("tar", "--numeric-owner", "-C", filePath, "-cf", "-", ".")
 
-	cmd.Stdout = *writeStream
+	cmd.Stdout = writeStream
 	return cmd.Run()
 }

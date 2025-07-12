@@ -23,6 +23,7 @@ import (
 	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/compressiontype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
 	"github.com/spf13/cobra"
 )
 
@@ -70,6 +71,10 @@ data.`,
 		if outputFileName == "" {
 			outputFileName = json.Name + ".pxi"
 		}
+		if json.Type == instancetype.LXC && rootfsPath == "" {
+			log.Error("Root filesystem path is required for LXC instances.\n")
+			os.Exit(1)
+		}
 
 		file, err := utils.GetOutputFileHandle(outputFileName, forceOverwrite)
 		if err != nil {
@@ -89,7 +94,7 @@ data.`,
 			os.Exit(1)
 		}
 
-		err = createpxi.Create(file, json, compressiontype.None, encryptionType, excluded)
+		err = createpxi.Create(file, json, rootfsPath, compressiontype.None, encryptionType, excluded)
 		if err != nil {
 			os.Remove(outputFileName)
 			log.Error("Error creating Pextra Image: %v\n", err)

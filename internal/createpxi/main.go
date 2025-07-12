@@ -32,10 +32,11 @@ import (
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/pxiversion"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumetype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/signature"
 )
 
-func Create(file *os.File, config *conf.InstanceConfigGeneric, compressionType compressiontype.CompressionType, encryptionType encryptiontype.EncryptionType, excludedVolumes []string) error {
+func Create(file *os.File, config *conf.InstanceConfigGeneric, rootfsPath string, compressionType compressiontype.CompressionType, encryptionType encryptiontype.EncryptionType, excludedVolumes []string) error {
 	var writer io.Writer = file
 	var err error
 
@@ -71,6 +72,16 @@ func Create(file *os.File, config *conf.InstanceConfigGeneric, compressionType c
 	// Write volumes, excluding specified ones
 	volumes := utils.GetVolumePathsFromConfig(config, excludedVolumes)
 	log.Debug("Backing up %d volumes, excluding %d volumes: %v", len(config.Volumes), len(excludedVolumes), excludedVolumes)
+
+	if config.Type == instancetype.LXC {
+		// Include rootfs path for LXC instances
+		volumes = append(volumes, rootfsPath)
+		config.Volumes = append(config.Volumes, conf.InstanceVolume{
+			ID:   "rootfs",
+			Type: volumetype.LXC_,
+		})
+	}
+
 	for i, volumePath := range volumes {
 		// Save before position seek
 		// Save current file position to later update SVOL chunk length

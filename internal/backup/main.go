@@ -46,6 +46,9 @@ func BackupVolume(volumePath string, volumeType volumetype.VolumeType, writeStre
 		return countingWriter.Count(), err
 	case volumetype.ISCSI:
 		return 0, fmt.Errorf("iSCSI volumes should not be backed up directly; use the underlying block device")
+	case volumetype.LXC_:
+		err := BackupLXCRootfs(volumePath, countingWriter)
+		return countingWriter.Count(), err
 	default:
 		return 0, fmt.Errorf("unsupported volume type: %s", volumeType)
 	}
