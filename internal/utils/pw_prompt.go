@@ -16,6 +16,7 @@ limitations under the License.
 package utils
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/signal"
@@ -24,9 +25,21 @@ import (
 	"golang.org/x/term"
 )
 
-// ReadPassword reads a password from the terminal without echo.
+// ReadPassword reads a password from the terminal without echo or from stdin.
 // https://github.com/containers/common/pull/1312/files#diff-9c54be49c38899332e913eaa6abfc98bd8bf21ff6a819614e2ef6cd093da9f92R96
 func ReadPassword(fd int) ([]byte, error) {
+	// Not a terminal, read from stdin with echo
+	if !term.IsTerminal(fd) {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Fprint(os.Stderr, "Password: ")
+		pw, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		// remove trailing newline
+		return []byte(pw[:len(pw)-1]), nil
+	}
+
 	// Store and restore the terminal status on interruptions to
 	// avoid that the terminal remains in the password state
 	// This is necessary as for https://github.com/golang/go/issues/31180
