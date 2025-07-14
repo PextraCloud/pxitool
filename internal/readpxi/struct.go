@@ -25,6 +25,7 @@ import (
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/pxiversion"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumeformat"
 )
 
 type PXIChunks struct {
@@ -35,6 +36,11 @@ type PXIChunks struct {
 	IEND *iend.Data   // Required
 }
 
+type ReadPXIOutputVolume struct {
+	VolumeID     string                    `json:"id"`
+	VolumeFormat volumeformat.VolumeFormat `json:"format"`
+}
+
 type ReadPXIOutput struct {
 	PXIVersion      pxiversion.PXIVersion           `json:"version"`
 	InstanceType    instancetype.InstanceType       `json:"instance_type"`
@@ -42,6 +48,6 @@ type ReadPXIOutput struct {
 	EncryptionType  encryptiontype.EncryptionType   `json:"encryption_type"`
 	Config          *conf.InstanceConfigGeneric     `json:"config,omitempty"` // nil if encrypted chunks are skipped
 	// List of volume IDs that are present in the PXI file as SVOL chunks
-	Volumes []string `json:"volumes,omitempty"` // nil if encrypted chunks are skipped
-	Path    string   `json:"path"`              // Absolute path to the PXI file
+	Volumes []ReadPXIOutputVolume `json:"volumes,omitempty"` // nil if encrypted chunks are skipped
+	Path    string                `json:"path"`              // Absolute path to the PXI file
 }

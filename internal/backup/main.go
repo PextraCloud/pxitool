@@ -20,6 +20,7 @@ import (
 	"io"
 
 	"github.com/PextraCloud/pxitool/internal/utils"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumeformat"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumetype"
 )
 
@@ -29,27 +30,32 @@ type VolumeBackupPayload struct {
 }
 
 // Backs up a volume based on its type
-func BackupVolume(volumePath string, volumeType volumetype.VolumeType, writeStream io.Writer) (int64, error) {
+func BackupVolume(volumePath string, volumeType volumetype.VolumeType, writeStream io.Writer) (int64, *volumeformat.VolumeFormat, error) {
 	countingWriter := utils.NewCountingWriter(writeStream)
 	switch volumeType {
 	case volumetype.Directory, volumetype.NetFS:
 		err := BackupQEMUVolume(volumePath, countingWriter)
-		return countingWriter.Count(), err
+		format := getVolumeFormat(countingWriter.First4())
+		return countingWriter.Count(), &format, err
 	case volumetype.LVM:
 		err := BackupLVMVolume(volumePath, countingWriter)
-		return countingWriter.Count(), err
+		format := getVolumeFormat(countingWriter.First4())
+		return countingWriter.Count(), &format, err
 	case volumetype.ZFS:
 		err := BackupZFSVolume(volumePath, countingWriter)
-		return countingWriter.Count(), err
+		format := getVolumeFormat(countingWriter.First4())
+		return countingWriter.Count(), &format, err
 	case volumetype.RBD:
 		err := BackupRBDVolume(volumePath, countingWriter)
-		return countingWriter.Count(), err
+		format := getVolumeFormat(countingWriter.First4())
+		return countingWriter.Count(), &format, err
 	case volumetype.ISCSI:
-		return 0, fmt.Errorf("iSCSI volumes should not be backed up directly; use the underlying block device")
+		return 0, nil, fmt.Errorf("iSCSI volumes should not be backed up directly; use the underlying block device")
 	case volumetype.LXC_:
 		err := BackupLXCRootfs(volumePath, countingWriter)
-		return countingWriter.Count(), err
+		format := getVolumeFormat(countingWriter.First4()) // Will be Raw for LXC
+		return countingWriter.Count(), &format, err
 	default:
-		return 0, fmt.Errorf("unsupported volume type: %s", volumeType)
+		return 0, nil, fmt.Errorf("unsupported volume type: %s", volumeType)
 	}
 }

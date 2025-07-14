@@ -32,6 +32,7 @@ import (
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/pxiversion"
+	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumeformat"
 	"github.com/PextraCloud/pxitool/pkg/pxi/constants/volumetype"
 	"github.com/PextraCloud/pxitool/pkg/pxi/signature"
 )
@@ -99,13 +100,18 @@ func Create(file *os.File, config *conf.InstanceConfigGeneric, rootfsPath string
 
 		log.Debug("Backing up volume %d/%d: %s", i+1, len(volumes), volumePath)
 		var bytesWritten int64
-		if bytesWritten, err = backup.BackupVolume(volumePath, config.Volumes[i].Type, writer); err != nil {
+		var volumeFormat *volumeformat.VolumeFormat
+		if bytesWritten, volumeFormat, err = backup.BackupVolume(volumePath, config.Volumes[i].Type, writer); err != nil {
 			return fmt.Errorf("failed to backup volume %s: %v", volumePath, err)
 		}
-		log.Debug("Volume %d/%d backed up successfully (%d bytes written).", i+1, len(volumes), bytesWritten)
+		if volumeFormat == nil {
+			return fmt.Errorf("unknown volume format for volume %s", volumePath)
+		}
+		log.Debug("Volume %d/%d (%s) backed up successfully (%d bytes written).", i+1, len(volumes), volumeFormat, bytesWritten)
 
 		// Increment SVOL chunk length
 		svol.IncrementLength(svolChunk, uint64(bytesWritten))
+		svol.SetVolumeFormat(svolChunk, *volumeFormat)
 
 		// Change the length of the SVOL chunk in the writer (todo)
 		if seeker, ok := writer.(io.Seeker); ok {

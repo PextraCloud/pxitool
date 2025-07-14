@@ -178,9 +178,12 @@ func GetInfo(path string, skipEncrypted bool) (*ReadPXIOutput, error) {
 	// Only if skipEncrypted is false
 	if chunks.CONF != nil {
 		output.Config = &chunks.CONF.Config
-		output.Volumes = make([]string, len(chunks.SVOL))
-		for i, svol := range chunks.SVOL {
-			output.Volumes[i] = svol.VolumeID
+		output.Volumes = make([]ReadPXIOutputVolume, len(chunks.SVOL))
+		for i, vol := range chunks.SVOL {
+			output.Volumes[i] = ReadPXIOutputVolume{
+				VolumeID:     vol.VolumeID,
+				VolumeFormat: vol.VolumeFormat,
+			}
 		}
 	}
 

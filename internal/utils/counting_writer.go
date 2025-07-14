@@ -20,11 +20,13 @@ import (
 	"sync"
 )
 
-// Wrapper over io.Writer that also counts number of written bytes.
+// Wrapper over io.Writer that counts number of written bytes and saves the first 4 bytes of the written data.
 type CountingWriter struct {
-	W     io.Writer
-	count int64
-	mu    sync.Mutex
+	W      io.Writer
+	count  int64
+	first4 [4]byte
+	set4   bool
+	mu     sync.Mutex
 }
 
 func NewCountingWriter(w io.Writer) *CountingWriter {
@@ -33,9 +35,17 @@ func NewCountingWriter(w io.Writer) *CountingWriter {
 
 func (cw *CountingWriter) Write(p []byte) (int, error) {
 	n, err := cw.W.Write(p)
-	cw.mu.Lock()
-	cw.count += int64(n)
-	cw.mu.Unlock()
+	if n > 0 {
+		cw.mu.Lock()
+		defer cw.mu.Unlock()
+		cw.count += int64(n)
+		// Save the first 4 bytes if not already set
+		if !cw.set4 {
+			copy(cw.first4[:], p[:min(n, 4)])
+			cw.set4 = true
+		}
+	}
+
 	return n, err
 }
 
@@ -43,4 +53,10 @@ func (cw *CountingWriter) Count() int64 {
 	cw.mu.Lock()
 	defer cw.mu.Unlock()
 	return cw.count
+}
+
+func (cw *CountingWriter) First4() [4]byte {
+	cw.mu.Lock()
+	defer cw.mu.Unlock()
+	return cw.first4
 }
