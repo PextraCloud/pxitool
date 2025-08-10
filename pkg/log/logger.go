@@ -31,6 +31,11 @@ func SetDebug(enabled bool) {
 	debugEnabled = enabled
 }
 
+// IsDebug checks if debug logging is enabled
+func IsDebug() bool {
+	return debugEnabled
+}
+
 // Debug prints debug messages if debug is enabled
 func Debug(format string, args ...any) {
 	if debugEnabled {
@@ -51,4 +56,12 @@ func Warn(format string, args ...any) {
 // Error prints error messages
 func Error(format string, args ...any) {
 	fmt.Fprintf(output, "[ERROR] "+format+"\n", args...)
+}
+
+func SetOutput(w io.Writer) {
+	if w == nil {
+		output = os.Stderr
+	} else {
+		output = w
+	}
 }
