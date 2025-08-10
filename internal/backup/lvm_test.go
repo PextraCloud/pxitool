@@ -27,22 +27,6 @@ import (
 	"testing"
 )
 
-// commandExists checks if a command is available in the system's PATH.
-func commandExists(cmd string) bool {
-	_, err := exec.LookPath(cmd)
-	return err == nil
-}
-
-// runCommand executes a command and fails the test if it errors.
-func runCommand(t *testing.T, name string, args ...string) {
-	t.Helper()
-	cmd := exec.Command(name, args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Command '%s %s' failed: %v\nOutput:\n%s", name, strings.Join(args, " "), err, string(output))
-	}
-}
-
 func TestBackupLVMVolume(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("Skipping LVM test: must be run as root")
