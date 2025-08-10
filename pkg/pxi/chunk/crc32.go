@@ -44,7 +44,7 @@ func (c *Chunk) CRC32() uint32 {
 
 	if c.CRC != 0 {
 		return c.CRC
-	} else if c.Data == nil || len(c.Data) == 0 {
+	} else if len(c.Data) == 0 {
 		return 0
 	}
 
