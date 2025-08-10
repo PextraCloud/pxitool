@@ -50,7 +50,7 @@ func BackupLVMVolume(volumePath string, writeStream io.Writer) error {
 	// Create snapshot
 	timestamp := time.Now().Format("20060102150405")
 	snapshotName := fmt.Sprintf("%s-pxitool-%s", lvName, timestamp)
-	createCmd := exec.Command("lvcreate", "--snapshot", "--name", snapshotName, "--size", "256M", fmt.Sprintf("/dev/%s/%s", vgName, lvName))
+	createCmd := exec.Command("lvcreate", "--snapshot", "--name", snapshotName, "--size", "64M", fmt.Sprintf("/dev/%s/%s", vgName, lvName))
 
 	if err := createCmd.Run(); err != nil {
 		return fmt.Errorf("failed to create LVM snapshot: %w", err)
