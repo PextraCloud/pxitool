@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,9 +16,15 @@ limitations under the License.
 package main
 
 import (
-	"github.com/PextraCloud/pxitool/cmd"
+	"context"
+	"os"
+
+	"github.com/PextraCloud/pxitool/internal/cli2"
 )
 
 func main() {
-	cmd.Execute()
+	ctx := context.Background()
+	if err := cli2.Execute(ctx); err != nil {
+		os.Exit(1)
+	}
 }

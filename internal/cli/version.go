@@ -13,31 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+package cli
 
-import (
-	"bytes"
-	"testing"
+import "github.com/spf13/cobra"
 
-	"github.com/PextraCloud/pxitool/pkg/log"
-)
+func init() {
+	rootCmd.AddCommand(versionCmd)
+}
 
-func TestRootCommand_DebugFlag(t *testing.T) {
-	initialDebugState := log.IsDebug()
-	log.SetDebug(false)
-	t.Cleanup(func() {
-		log.SetDebug(initialDebugState)
-	})
-
-	rootCmd.SetOut(&bytes.Buffer{})
-	rootCmd.SetArgs([]string{"version", "--debug"})
-
-	err := rootCmd.Execute()
-	if err != nil {
-		t.Fatalf("Execute() failed: %v", err)
-	}
-
-	if !log.IsDebug() {
-		t.Error("expected debug flag to be set, but it was not")
-	}
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number of pxitool",
+	Long: `Prints the current version of the Pextra Image
+Tool (pxitool), along with the version of the
+Pextra Image Specification it conforms to.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Println("Pextra Image Tool version 1.0.0")
+		cmd.Println("Conforms to Pextra Image Specification version 1.0")
+	},
 }

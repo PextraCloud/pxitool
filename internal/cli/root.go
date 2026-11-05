@@ -13,10 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+package cli
 
 import (
-	"os"
+	"context"
 
 	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/spf13/cobra"
@@ -34,6 +34,7 @@ https://pextracloud.github.io/ImageFormats/pxi.
 
 Copyright (C) 2025 Pextra Inc. This tool is licensed
 under the Apache License, Version 2.0.`,
+	SilenceUsage: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		log.SetDebug(debugFlag)
 	},
@@ -43,9 +44,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug logging")
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		log.Error("%v", err)
-		os.Exit(1)
-	}
+func Execute(ctx context.Context) error {
+	return rootCmd.ExecuteContext(ctx)
 }
