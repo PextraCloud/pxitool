@@ -33,11 +33,10 @@ type ExtractOptions struct {
 
 // Args returns the command-line arguments for extracting a dar archive with the specified options.
 func (o ExtractOptions) Args() []string {
-	args := []string{"-N", "-Q", "--comparison-field=mtime", "-x"}
+	args := []string{"-N", "-Q", "--comparison-field=mtime", "-x", o.InputBasename, "-R", o.RootDir}
 	if o.DryRun {
 		args = append(args, "-e")
 	}
-	args = append(args, o.InputBasename, "-R", o.RootDir)
 
 	if len(o.Files) > 0 {
 		for _, file := range o.Files {

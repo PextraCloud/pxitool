@@ -36,11 +36,10 @@ type CreateOptions struct {
 
 // Args returns the command-line arguments for creating a dar archive with the specified options.
 func (o CreateOptions) Args() []string {
-	args := []string{"-N", "-Q", "-c"}
+	args := []string{"-N", "-Q", "-c", o.OutputBasename, "-R", o.RootDir}
 	if o.DryRun {
 		args = append(args, "-e")
 	}
-	args = append(args, o.OutputBasename, "-R", o.RootDir)
 
 	for _, file := range o.Files {
 		args = append(args, "-g", file)
