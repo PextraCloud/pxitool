@@ -202,6 +202,29 @@ func TestListOptionsArgs(t *testing.T) {
 		{
 			name:     "input basename",
 			options:  ListOptions{InputBasename: "in.dar"},
+			expected: []string{"-N", "-Q", "--list-format=xml", "-l", "in.dar"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.options.Args()
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("Args() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestListHeaderOptionsArgs(t *testing.T) {
+	tests := []struct {
+		name     string
+		options  ListHeaderOptions
+		expected []string
+	}{
+		{
+			name:     "input basename",
+			options:  ListHeaderOptions{InputBasename: "in.dar"},
 			expected: []string{"-N", "-Q", "-l", "in.dar", "-aheader"},
 		},
 	}
