@@ -16,23 +16,10 @@ limitations under the License.
 package dar
 
 import (
+	"encoding/xml"
 	"fmt"
 	"os/exec"
-	"regexp"
 )
-
-var (
-	darSymmetricEncryptionRegex  = regexp.MustCompile(`Symmetric key encryption used\s*:\s*(\S+)`)
-	darCompressionAlgorithmRegex = regexp.MustCompile(`Compression algorithm used\s*:\s*(\S+)`)
-)
-
-type Header struct {
-	CompressionAlgorithm         string `json:"compression_algorithm"`
-	SymmetricEncryptionAlgorithm string `json:"symmetric_encryption_algorithm"`
-	// IsEncrypted indicates whether the archive is encrypted or not. Determined by checking if
-	// SymmetricEncryptionAlgorithm is not "none".
-	IsEncrypted bool `json:"is_encrypted"`
-}
 
 // ListOptions holds the options for listing the contents of a dar archive. Only a subset of the options are supported.
 type ListOptions struct {
@@ -41,59 +28,45 @@ type ListOptions struct {
 
 // Args returns the command-line arguments for listing the contents of a dar archive with the specified options.
 func (o ListOptions) Args() []string {
-	args := []string{"-N", "-Q", "-l"}
-	args = append(args, o.InputBasename, "-aheader")
+	args := []string{"-N", "-Q", "--list-format=xml", "-l", o.InputBasename}
 	return args
 }
 
-// parseHeader parses the output of the dar command to extract the header information, including compression algorithm
-// and symmetric encryption algorithm.
-func parseHeader(output string) (*Header, error) {
-	header := &Header{}
-
-	/*
-		Archive version format               : 11.3
-		Compression algorithm used           : zstd
-		Compression block size used          : 0
-		Symmetric key encryption used        : none
-		Asymmetric key encryption used       : none
-		Archive is signed                    : no
-		Sequential reading marks             : present
-		User comment                         : N/A
-	*/
-
-	// Extract the symmetric encryption algorithm
-	symmetricEncryptionMatches := darSymmetricEncryptionRegex.FindStringSubmatch(output)
-	if len(symmetricEncryptionMatches) < 2 {
-		return nil, fmt.Errorf("failed to parse symmetric encryption algorithm from dar output")
-	}
-	header.SymmetricEncryptionAlgorithm = symmetricEncryptionMatches[1]
-	// Set IsEncrypted
-	header.IsEncrypted = header.SymmetricEncryptionAlgorithm != "none"
-
-	// Extract the compression algorithm
-	compressionAlgorithmMatches := darCompressionAlgorithmRegex.FindStringSubmatch(output)
-	if len(compressionAlgorithmMatches) < 2 {
-		return nil, fmt.Errorf("failed to parse compression algorithm from dar output")
-	}
-	header.CompressionAlgorithm = compressionAlgorithmMatches[1]
-
-	return header, nil
+/*
+<?xml version="1.0" ?>
+<!DOCTYPE Catalog SYSTEM "dar-catalog.dtd">
+<Catalog format="1.2">
+<File name="vol-DW0Mm2TL7kPcqSvCBs9tB.vmdk" size="192 kio" stored="513 o" crc="b4214416" dirty="no" sparse="yes" delta_sig="no" patch_base_crc="" patch_result_crc="">
+<Attributes data="saved" metadata="absent" user="user" group="user" permissions=" -rw-r--r--" atime="1793416430" mtime="1793416430" ctime="1793416430" />
+</File>
+...
+</Catalog>
+*/
+type listXMLFile struct {
+	XMLName xml.Name `xml:"File"`
+	Name    string   `xml:"name,attr"`
+}
+type listXML struct {
+	XMLName xml.Name      `xml:"Catalog"`
+	Files   []listXMLFile `xml:"File"`
 }
 
-// ListHeader reads the header of a dar archive and returns the compression algorithm and symmetric encryption algorithm
-// used in the archive.
-func ListHeader(options ListOptions) (*Header, error) {
+// List lists the contents of a dar archive and returns the names of the files in the archive.
+func List(options ListOptions) ([]string, error) {
 	args := options.Args()
+	out, err := exec.Command("dar", args...).Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list dar archive: %w", err)
+	}
 
-	// NOTE: dar exits with a non-zero exit code with -aheader
-	cmd := exec.Command("dar", args...)
-	outputByte, _ := cmd.CombinedOutput()
-	output := string(outputByte)
+	var catalog listXML
+	if err := xml.Unmarshal(out, &catalog); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal dar archive list: %w", err)
+	}
 
-	return parseHeader(output)
-}
-
-func (h *Header) String() string {
-	return fmt.Sprintf("Compression Algorithm: %s\nSymmetric Encryption Algorithm: %s", h.CompressionAlgorithm, h.SymmetricEncryptionAlgorithm)
+	var names []string
+	for _, file := range catalog.Files {
+		names = append(names, file.Name)
+	}
+	return names, nil
 }
