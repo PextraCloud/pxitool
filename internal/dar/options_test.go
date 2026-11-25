@@ -41,7 +41,7 @@ func TestCreateOptionsArgs(t *testing.T) {
 				RootDir:        "/root",
 				DryRun:         true,
 			},
-			expected: []string{"-N", "-Q", "-c", "-e", "out.dar", "-R", "/root", "-n"},
+			expected: []string{"-N", "-Q", "-c", "out.dar", "-R", "/root", "-e", "-n"},
 		},
 		{
 			name: "files",
@@ -93,7 +93,8 @@ func TestCreateOptionsArgs(t *testing.T) {
 				Compression:    "zstd",
 			},
 			expected: []string{
-				"-N", "-Q", "-c", "-e", "out.dar", "-R", "/root",
+				"-N", "-Q", "-c", "out.dar", "-R", "/root",
+				"-e",
 				"-g", "a.txt",
 				"-K", "aes:secret",
 				"--compression", "zstd",
@@ -133,7 +134,7 @@ func TestExtractOptionsArgs(t *testing.T) {
 				RootDir:       "/root",
 				DryRun:        true,
 			},
-			expected: []string{"-N", "-Q", "--comparison-field=mtime", "-x", "-e", "in.dar", "-R", "/root", "-n"},
+			expected: []string{"-N", "-Q", "--comparison-field=mtime", "-x", "in.dar", "-R", "/root", "-e", "-n"},
 		},
 		{
 			name: "files",
@@ -175,7 +176,8 @@ func TestExtractOptionsArgs(t *testing.T) {
 				Key:           "secret",
 			},
 			expected: []string{
-				"-N", "-Q", "--comparison-field=mtime", "-x", "-e", "in.dar", "-R", "/root",
+				"-N", "-Q", "--comparison-field=mtime", "-x", "in.dar", "-R", "/root",
+				"-e",
 				"-g", "a.txt",
 				"-K", "aes:secret",
 				"-w",
