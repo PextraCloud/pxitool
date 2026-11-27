@@ -18,9 +18,9 @@ package backup
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 
-	"github.com/PextraCloud/pxitool/internal/execu"
 	"github.com/PextraCloud/pxitool/internal/names"
 	"github.com/PextraCloud/pxitool/pkg/log"
 )
@@ -36,12 +36,12 @@ func backupZFSVolume(sourcePath, volumeID, workingDirectory string) (string, err
 	// Generate unique snapshot name
 	snapName := fmt.Sprintf("%s@%s", zvol, names.UniqueSnapshotName(volumeID, names.ZFS_MAX_NAME_LEN-len(zvol)-1))
 	// Create snapshot
-	if out, err := execu.Command("zfs", "snapshot", snapName).CombinedOutput(); err != nil {
+	if out, err := exec.Command("zfs", "snapshot", snapName).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("zfs: failed to create snapshot for %s: %w\nOutput:\n%s", zvol, err, string(out))
 	}
 	defer func() {
 		// Destroy snapshot on exit (best-effort)
-		if out, err := execu.Command("zfs", "destroy", snapName).CombinedOutput(); err != nil {
+		if out, err := exec.Command("zfs", "destroy", snapName).CombinedOutput(); err != nil {
 			log.Warn("Failed to destroy ZFS snapshot %s: %v\nOutput:\n%s", snapName, err, string(out))
 		}
 	}()
@@ -55,7 +55,7 @@ func backupZFSVolume(sourcePath, volumeID, workingDirectory string) (string, err
 	defer dest.Close()
 
 	// Execute the send
-	sendCmd := execu.Command("zfs", "send", snapName)
+	sendCmd := exec.Command("zfs", "send", snapName)
 	// Pipe send output to destination file
 	sendCmd.Stdout = dest
 

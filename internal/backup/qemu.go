@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"syscall"
 
-	"github.com/PextraCloud/pxitool/internal/execu"
 	"github.com/PextraCloud/pxitool/internal/volumeformat"
 )
 
@@ -62,8 +62,9 @@ func backupQEMUVolume(sourcePath, volumeID, workingDirectory string) (string, er
 	}
 	format := volumeformat.GetVolumeFormat(magic)
 
+	// Create destination file in working directory
 	destination := path.Join(workingDirectory, volumeID)
-	output, err := execu.Command("qemu-img", "convert",
+	output, err := exec.Command("qemu-img", "convert",
 		"-f", format.String(),
 		"-O", format.String(),
 		"--force-share",

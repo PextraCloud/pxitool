@@ -18,9 +18,9 @@ package backup
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 
-	"github.com/PextraCloud/pxitool/internal/execu"
 	"github.com/PextraCloud/pxitool/internal/names"
 	"github.com/PextraCloud/pxitool/pkg/log"
 )
@@ -36,13 +36,13 @@ func backupRBDVolume(sourcePath, volumeID, workingDirectory string) (string, err
 	// Generate unique snapshot name
 	snapName := names.UniqueSnapshotName(volumeID, names.RBD_MAX_NAME_LEN)
 	// Create snapshot
-	if out, err := execu.Command("rbd", "snap", "create", "--snap", snapName, image).CombinedOutput(); err != nil {
+	if out, err := exec.Command("rbd", "snap", "create", "--snap", snapName, image).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("rbd: failed to create snapshot for %s: %w\nOutput:\n%s", image, err, string(out))
 	}
 	defer func() {
 		// Destroy snapshot on exit (best-effort); unprotect first, then remove.
-		execu.Command("rbd", "snap", "unprotect", "--snap", snapName, image).Run()
-		if out, err := execu.Command("rbd", "snap", "rm", "--snap", snapName, image).CombinedOutput(); err != nil {
+		exec.Command("rbd", "snap", "unprotect", "--snap", snapName, image).Run()
+		if out, err := exec.Command("rbd", "snap", "rm", "--snap", snapName, image).CombinedOutput(); err != nil {
 			log.Warn("Failed to remove RBD snapshot %s/%s@%s: %v\nOutput:\n%s", pool, image, snapName, err, string(out))
 		}
 	}()
@@ -56,7 +56,7 @@ func backupRBDVolume(sourcePath, volumeID, workingDirectory string) (string, err
 	defer dest.Close()
 
 	// Execute the export
-	exportCmd := execu.Command("rbd", "export", image+"@"+snapName)
+	exportCmd := exec.Command("rbd", "export", image+"@"+snapName)
 	// Pipe export output to destination file
 	exportCmd.Stdout = dest
 

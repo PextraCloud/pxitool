@@ -18,9 +18,9 @@ package backup
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 
-	"github.com/PextraCloud/pxitool/internal/execu"
 	"github.com/PextraCloud/pxitool/internal/names"
 	"github.com/PextraCloud/pxitool/pkg/log"
 )
@@ -45,12 +45,12 @@ func backupLVMVolume(sourcePath, volumeID, workingDirectory string) (string, err
 	// Generate unique snapshot name
 	snapName := names.UniqueSnapshotName(volumeID, names.LVM_MAX_NAME_LEN)
 	// Create snapshot
-	if out, err := execu.Command("lvcreate", "--snapshot", "--name", snapName,
+	if out, err := exec.Command("lvcreate", "--snapshot", "--name", snapName,
 		"--size", lvmSnapshotSize, fmt.Sprintf("/dev/%s/%s", vg, lv)).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("lvm: failed to create snapshot for %s: %w\nOutput:\n%s", sourcePath, err, string(out))
 	}
 	defer func() {
-		if out, err := execu.Command("lvremove", "-f", fmt.Sprintf("/dev/%s/%s", vg, snapName)).CombinedOutput(); err != nil {
+		if out, err := exec.Command("lvremove", "-f", fmt.Sprintf("/dev/%s/%s", vg, snapName)).CombinedOutput(); err != nil {
 			log.Warn("Failed to destroy LVM snapshot %s/%s: %v\nOutput:\n%s", vg, snapName, err, string(out))
 		}
 	}()
@@ -64,7 +64,7 @@ func backupLVMVolume(sourcePath, volumeID, workingDirectory string) (string, err
 	defer dest.Close()
 
 	// Execute the read/write
-	ddCmd := execu.Command("dd", fmt.Sprintf("if=/dev/%s/%s", vg, snapName), "bs=8M", "status=none")
+	ddCmd := exec.Command("dd", fmt.Sprintf("if=/dev/%s/%s", vg, snapName), "bs=8M", "status=none")
 	// Pipe output to destination file
 	ddCmd.Stdout = dest
 

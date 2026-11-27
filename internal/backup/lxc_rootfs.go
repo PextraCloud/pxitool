@@ -20,8 +20,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-
-	"github.com/PextraCloud/pxitool/internal/execu"
 )
 
 // backupLXCRootfsVolume backs up an LXC container rootfs (a directory) by streaming it with `tar` into the destination
@@ -46,7 +44,7 @@ func backupLXCRootfsVolume(sourcePath, volumeID, workingDirectory string) (strin
 	}
 	defer dest.Close()
 
-	cmd := execu.Command("tar",
+	cmd := exec.Command("tar",
 		// Stay on the rootfs, do not archive /proc, /sys, /dev, etc.
 		"--one-file-system",
 		// Preserve permissions, sparse files, numeric owner, and ACLs
