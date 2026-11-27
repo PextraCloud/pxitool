@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,33 +17,41 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/PextraCloud/pxitool/pkg/log"
+	"github.com/PextraCloud/pxitool/internal/version"
 	"github.com/spf13/cobra"
 )
 
-var debugFlag bool
+var rootVersionFlag bool
+
+const Version = "2.0.0"
 
 var rootCmd = &cobra.Command{
-	Use:   "pxitool",
-	Short: "CLI tool for working with .pxi files (Pextra Images)",
-	Long: `Pextra Image Tool (pxitool) is a command-line utility
-for creating, extracting, and managing Pextra Images,
-or .pxi files. It fully conforms to specification at
-https://pextracloud.github.io/ImageFormats/pxi.
-
-Copyright (C) 2025 Pextra Inc. This tool is licensed
-under the Apache License, Version 2.0.`,
+	Use:          "pxitool",
+	Short:        "CLI tool for working with .pxi files (Pextra Images)",
 	SilenceUsage: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		log.SetDebug(debugFlag)
+		// Set it to log to stderr by default
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		if !rootVersionFlag {
+			cmd.Help()
+			return
+		}
+
+		v := version.Version()
+		fmt.Fprintln(cmd.OutOrStdout(), v)
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug logging")
+	rootCmd.Flags().BoolVarP(&rootVersionFlag, "version", "v", false, "Show version information")
 }
 
-func Execute(ctx context.Context) error {
-	return rootCmd.ExecuteContext(ctx)
+func Execute(ctx context.Context) int {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
+		return 1
+	}
+	return 0
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,55 +18,55 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
+	"github.com/PextraCloud/pxitool/internal/createpxi"
 	"github.com/PextraCloud/pxitool/internal/readpxi"
-	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/spf13/cobra"
 )
 
-var isInfoInJson bool
-var skipEncryptedChunks bool
-
-func init() {
-	rootCmd.AddCommand(infoCmd)
-	infoCmd.Flags().BoolVarP(&skipEncryptedChunks, "skip-encrypted", "s", false, `Skip encrypted chunks in the PXI file if they are present
-This will not read the encrypted config and volumes`)
-	infoCmd.Flags().BoolVarP(&isInfoInJson, "json", "j", false, "Output information in JSON format")
-}
+var infoJsonOutput bool
+var infoEncryptionKey string
+var infoOnlyHeader bool
 
 var infoCmd = &cobra.Command{
-	Use:   "info [file]",
-	Args:  cobra.ExactArgs(1),
-	Short: "Display information about a Pextra Image",
-	Long: `This command displays information about a
-Pextra Image (.pxi) file. It checks the file structure,
-verifies the integrity of the chunks, and outputs
-information about the image`,
-	Run: func(cmd *cobra.Command, args []string) {
-		inputFileName := args[0]
-		result, err := readpxi.GetInfo(inputFileName, skipEncryptedChunks)
-		if err != nil {
-			log.Error("Error reading PXI file: %v", err)
-			os.Exit(1)
+	Use:     "info <file>",
+	Args:    cobra.ExactArgs(1),
+	Example: "  pxitool info /path/to/pxi/file",
+	Short:   "Display information about a Pextra Image (PXI)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := createpxi.CheckEnvironment(); err != nil {
+			return err
 		}
 
-		if isInfoInJson {
-			var jsonData []byte
-			if jsonData, err = json.MarshalIndent(result, "", "    "); err != nil {
-				log.Error("Error serializing PXI info to JSON: %v", err)
-				os.Exit(1)
-			}
-			fmt.Println(string(jsonData))
+		pxiPath := args[0]
+
+		var toPrint fmt.Stringer
+		var err error
+		if infoOnlyHeader {
+			toPrint, err = readpxi.ReadPXIHeader(pxiPath)
 		} else {
-			log.Info("PXI File: %s", result.Path)
-			log.Info("Version=%s, InstanceType=%s, Compression=%s, Encryption=%s", result.PXIVersion, result.InstanceType, result.CompressionType, result.EncryptionType)
-			log.Info("%d volumes in config, of which %d are present in the PXI file", len(result.Config.Volumes), len(result.Volumes))
-			if result.Config != nil {
-				log.Info("Config: can be viewed by passing the '--json' flag")
-			} else {
-				log.Info("Config: <nil> (encrypted chunks skipped)")
-			}
+			toPrint, err = readpxi.ReadPXI(pxiPath, infoEncryptionKey)
 		}
+		if err != nil {
+			return err
+		}
+
+		if infoJsonOutput {
+			output, err := json.MarshalIndent(toPrint, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), string(output))
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), toPrint.String())
+		}
+		return nil
 	},
+}
+
+func init() {
+	infoCmd.Flags().BoolVarP(&infoJsonOutput, "json", "j", false, "Output information in JSON format")
+	infoCmd.Flags().StringVarP(&infoEncryptionKey, "key", "k", "", "Encryption key for the PXI file")
+	infoCmd.Flags().BoolVarP(&infoOnlyHeader, "header", "H", false, "Only display the header information of the PXI file; encryption key is ignored")
+	rootCmd.AddCommand(infoCmd)
 }

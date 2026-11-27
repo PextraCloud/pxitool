@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,90 +16,115 @@ limitations under the License.
 package cli
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/PextraCloud/pxitool/internal/createpxi"
-	"github.com/PextraCloud/pxitool/internal/utils"
-	"github.com/PextraCloud/pxitool/pkg/log"
-	"github.com/PextraCloud/pxitool/pkg/pxi/constants/compressiontype"
-	"github.com/PextraCloud/pxitool/pkg/pxi/constants/encryptiontype"
-	"github.com/PextraCloud/pxitool/pkg/pxi/constants/instancetype"
+	"github.com/PextraCloud/pxitool/pkg/pxi"
 	"github.com/spf13/cobra"
 )
 
-var jsonFilePath string
-var outputFileName string
-var forceOverwrite bool
-var encryptionTypeString string
-var excluded []string
-var rootfsPath string
-
-func init() {
-	rootCmd.AddCommand(createCmd)
-
-	createCmd.Flags().StringVarP(&jsonFilePath, "config", "c", "", "Path to the JSON configuration file for the Pextra Image")
-	createCmd.MarkFlagRequired("config")
-	createCmd.MarkFlagFilename("config", "json")
-
-	createCmd.Flags().StringVarP(&outputFileName, "output", "o", "", "Output file name for the Pextra Image (.pxi). Defaults to <name>.pxi from the config file")
-	createCmd.MarkFlagFilename("output", "pxi")
-
-	createCmd.Flags().BoolVarP(&forceOverwrite, "force", "f", false, "Force overwrite of existing .pxi files without prompt")
-
-	createCmd.Flags().StringVarP(&encryptionTypeString, "encryption", "e", "aes-256-gcm", "Encryption type to use for the Pextra Image (default: aes-256-gcm). Supported: aes-256-gcm, none. You will be prompted for a password if encryption is enabled.")
-
-	createCmd.Flags().StringArrayVarP(&excluded, "exclude", "x", nil, "List of volume IDs to exclude from the Pextra Image. Can be specified multiple times.")
-
-	createCmd.Flags().StringVarP(&rootfsPath, "rootfs", "r", "", "Path to the root filesystem for LXC instances (required). This option is ignored for other instance types.")
-	createCmd.MarkFlagDirname("rootfs")
-}
+var createConfigPath string
+var createExcludeVolumesRaw []string
+var createOverwrite bool
+var createEncryptionCipherString string
+var createEncryptionKey string
+var createCompressionAlgorithmString string
+var createConcurrency int
 
 var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a new Pextra Image (.pxi)",
-	Long: `This command creates a new Pextra Image file,
-based on a JSON configuration file and volume
-data.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		json, err := utils.GetConfChunkJSON(jsonFilePath)
+	Use:     "create [file]",
+	Args:    cobra.MaximumNArgs(1),
+	Example: "  # Write to a file\n  pxitool create -c /path/to/config.json /path/to/output.pxi\n\n  # Write to stdout\n  pxitool create -c /path/to/config.json -",
+	Short:   "Create a new Pextra Image (PXI)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if createConcurrency < 1 {
+			return fmt.Errorf("concurrency must be at least 1")
+		}
+
+		if err := createpxi.CheckEnvironment(); err != nil {
+			return err
+		}
+
+		var encryptionCipher pxi.EncryptionCipher
+		if createEncryptionCipherString != "" {
+			encryptionCipher = pxi.EncryptionCipher(createEncryptionCipherString)
+			if !encryptionCipher.Valid() {
+				return fmt.Errorf("Invalid encryption cipher: %s. Supported: %s.", createEncryptionCipherString, strings.Join(pxi.EncryptionCiphersStrings, ", "))
+			}
+		}
+
+		var compressionAlgorithm pxi.CompressionAlgorithm
+		if createCompressionAlgorithmString != "" {
+			compressionAlgorithm = pxi.CompressionAlgorithm(createCompressionAlgorithmString)
+			if !compressionAlgorithm.Valid() {
+				return fmt.Errorf("Invalid compression algorithm: %s. Supported: %s.", createCompressionAlgorithmString, strings.Join(pxi.CompressionAlgorithmsStrings, ", "))
+			}
+		}
+
+		configBytes, err := os.ReadFile(createConfigPath)
 		if err != nil {
-			log.Error("Error reading JSON config: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("Failed to read config file: %v", err)
+		}
+
+		var configJson pxi.Instance
+		if err := json.Unmarshal(configBytes, &configJson); err != nil {
+			return fmt.Errorf("Failed to parse config JSON: %v", err)
+		}
+
+		// Process excluded volumes
+		var createExcludeVolumes []string
+		for _, volume := range createExcludeVolumesRaw {
+			createExcludeVolumes = append(createExcludeVolumes, strings.TrimSpace(volume))
 		}
 
 		// Use instance name if output filename not specified
-		if outputFileName == "" {
-			outputFileName = json.Name + ".pxi"
+		createOutputPath := ""
+		if len(args) > 0 {
+			createOutputPath = args[0]
 		}
-		if json.Type == instancetype.LXC && rootfsPath == "" {
-			log.Error("Root filesystem path is required for LXC instances.\n")
-			os.Exit(1)
-		}
-
-		file, err := utils.GetOutputFileHandle(outputFileName, forceOverwrite)
-		if err != nil {
-			log.Error("Error opening output file: %v\n", err)
-			os.Exit(1)
-		}
-		defer file.Close()
-
-		var encryptionType encryptiontype.EncryptionType
-		switch encryptionTypeString {
-		case "aes-256-gcm":
-			encryptionType = encryptiontype.AES256GCM
-		case "none":
-			encryptionType = encryptiontype.None
-		default:
-			log.Error("Unsupported encryption type: %s. Supported: aes-256-gcm, none.\n", encryptionTypeString)
-			os.Exit(1)
+		if createOutputPath == "" {
+			createOutputPath = configJson.Name + ".pxi"
 		}
 
-		err = createpxi.Create(file, json, rootfsPath, compressiontype.None, encryptionType, excluded)
-		if err != nil {
-			os.Remove(outputFileName)
-			log.Error("Error creating Pextra Image: %v\n", err)
-			os.Exit(1)
+		fmt.Fprintln(cmd.ErrOrStderr(), "Creating Pextra Image:", createOutputPath)
+		options := createpxi.CreatePXIOptions{
+			Instance:             configJson,
+			OutputPath:           createOutputPath,
+			ExcludeVolumes:       createExcludeVolumes,
+			Overwrite:            createOverwrite,
+			EncryptionCipher:     encryptionCipher,
+			EncryptionKey:        createEncryptionKey,
+			CompressionAlgorithm: compressionAlgorithm,
+			Concurrency:          createConcurrency,
 		}
-		log.Info("Pextra Image created successfully: %s\n", outputFileName)
+		if err := createpxi.CreatePXI(options); err != nil {
+			return err
+		}
+		return nil
 	},
+}
+
+func init() {
+	createCmd.Flags().StringVarP(&createConfigPath, "config", "c", "", "Path to the JSON configuration file for the Pextra Image")
+	createCmd.MarkFlagRequired("config")
+	createCmd.MarkFlagFilename("config", "json")
+
+	createCmd.Flags().StringSliceVarP(&createExcludeVolumesRaw, "exclude", "e", nil, "Specify volumes IDs to exclude from the Pextra Image")
+
+	createCmd.Flags().StringVarP(&createEncryptionCipherString, "cipher", "", "", fmt.Sprintf("Encryption cipher to use for the Pextra Image. If not specified, no encryption will be applied. Requires --key to be specified. Supported: %s", strings.Join(pxi.EncryptionCiphersStrings, ", ")))
+	createCmd.RegisterFlagCompletionFunc("cipher", cobra.FixedCompletions(pxi.EncryptionCiphersStrings, cobra.ShellCompDirectiveNoFileComp))
+
+	createCmd.Flags().StringVarP(&createEncryptionKey, "key", "", "", "Encryption key to use for the Pextra Image. Requires --cipher to be specified")
+	createCmd.MarkFlagsRequiredTogether("cipher", "key")
+
+	createCmd.Flags().StringVarP(&createCompressionAlgorithmString, "compression", "", "zstd", fmt.Sprintf("Compression algorithm to use for the Pextra Image. Supported: %s", strings.Join(pxi.CompressionAlgorithmsStrings, ", ")))
+	createCmd.RegisterFlagCompletionFunc("compression", cobra.FixedCompletions(pxi.CompressionAlgorithmsStrings, cobra.ShellCompDirectiveNoFileComp))
+
+	createCmd.Flags().BoolVarP(&createOverwrite, "force", "f", false, "Overwrite existing .pxi files")
+	createCmd.Flags().IntVarP(&createConcurrency, "concurrency", "", 2, "Number of concurrent operations for backing up volumes")
+
+	rootCmd.AddCommand(createCmd)
 }

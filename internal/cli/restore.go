@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,63 +16,60 @@ limitations under the License.
 package cli
 
 import (
-	"os"
+	"fmt"
 
-	"github.com/PextraCloud/pxitool/internal/readpxi"
 	"github.com/PextraCloud/pxitool/internal/restorepxi"
-	"github.com/PextraCloud/pxitool/pkg/log"
 	"github.com/spf13/cobra"
 )
 
-var restorePaths map[string]string
-var restoreOutputFile string
-
-func init() {
-	rootCmd.AddCommand(restoreCmd)
-
-	restoreCmd.Flags().StringToStringVarP(&restorePaths, "paths", "p", nil, "A map of volume IDs to restore paths. Format: 'vol-xxx=path1,vol-yyy=path2,...'. Use 'rootfs' for the LXC rootfs volume ID.")
-	restoreCmd.MarkFlagRequired("paths")
-
-	restoreCmd.Flags().StringVarP(&restoreOutputFile, "config-output", "o", "", "Path to the output file where the configuration will be saved after restoration. This file will contain the restored configuration of the PXI file.")
-	restoreCmd.MarkFlagRequired("config-output")
-	restoreCmd.MarkFlagFilename("config-output", "json")
-}
+var restoreVolumeMap map[string]string
+var restoreConfigOutput string
+var restoreEncryptionKey string
+var restoreConcurrency int
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore [file]",
-	Args:  cobra.ExactArgs(1),
-	Short: "Restore a Pextra Image",
-	Long:  `Restore a Pextra Image (PXI) file to specified paths for each volume, and save the configuration to an output file.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if restoreOutputFile == "" {
-			log.Error("Config output file must be specified using --config-output flag.")
-			os.Exit(1)
+	Use:     "restore <file>",
+	Args:    cobra.ExactArgs(1),
+	Example: "  # Restore a file-backed volume and an LVM volume\n  pxitool restore /path/to/backup.pxi -V vol-123=/var/lib/pxi/vol-123.qcow2 -V vol-456=/dev/vg1/vol-456 -o /path/to/config/output",
+	Short:   "Restore data from a backup",
+	Long: "This command restores data from a previously created backup.\n\n" +
+		"The -V flag maps each volume ID to its destination on this host. A\n" +
+		"pre-existing destination is REPLACED (rollback); each backend uses its\n" +
+		"atomic primitive so a crash leaves either the old or the new object:\n" +
+		"  directory:    file path for the restored image (same QEMU format as the backup)\n" +
+		"  lvm:          /dev/<vg>/<lv> to create/replace, or <vg> to reuse the source LV name in the given VG\n" +
+		"  zfs:          dataset name (e.g. tank/vm-1/root), created/replaced by zfs recv\n" +
+		"  rbd:          <pool>/<image> to create/replace\n" +
+		"  lxc_rootfs:   directory for the rootfs (replaced wholesale if present)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		filePath := args[0]
+		if restoreConcurrency < 1 {
+			return fmt.Errorf("Concurrency must be at least 1")
 		}
 
-		// Validate restorePaths
-		for volumeId, restorePath := range restorePaths {
-			if restorePath == "" {
-				log.Error("Restore path for '%s' is empty. Please specify a valid restore path.", volumeId)
-				os.Exit(1)
-			}
-			if volumeId == "" {
-				log.Error("Volume ID '%s' is empty. Please specify a valid volume ID (or 'rootfs' for the LXC rootfs).", volumeId)
-				os.Exit(1)
-			}
+		fmt.Fprintln(cmd.ErrOrStderr(), "Restoring from file:", filePath)
+		options := restorepxi.RestorePXIOptions{
+			PXIPath:       filePath,
+			VolumeMap:     restoreVolumeMap,
+			ConfigOutput:  restoreConfigOutput,
+			EncryptionKey: restoreEncryptionKey,
+			Concurrency:   restoreConcurrency,
 		}
-
-		inputFileName := args[0]
-		result, err := readpxi.ReadChunks(inputFileName)
-		if err != nil {
-			log.Error("Error reading PXI file: %v", err)
-			os.Exit(1)
+		if err := restorepxi.RestorePXI(options); err != nil {
+			return fmt.Errorf("Error restoring PXI file: %v", err)
 		}
-
-		log.Info("Restoring PXI file: %s", inputFileName)
-		if err := restorepxi.Restore(result, restorePaths, restoreOutputFile); err != nil {
-			log.Error("Error restoring PXI file: %v", err)
-			os.Exit(1)
-		}
-		log.Info("PXI file restored successfully to specified paths.")
+		return nil
 	},
+}
+
+func init() {
+	restoreCmd.Flags().StringToStringVarP(&restoreVolumeMap, "volume-map", "V", nil, "Specify volume ID to restore path mapping, e.g., vol-123=/dev/vg1/vol-123")
+
+	restoreCmd.Flags().StringVarP(&restoreConfigOutput, "config-output", "o", "", "Specify the output file for the config to restore")
+	restoreCmd.Flags().StringVarP(&restoreEncryptionKey, "key", "k", "", "Encryption key for the PXI file")
+	restoreCmd.Flags().IntVarP(&restoreConcurrency, "concurrency", "", 2, "Number of concurrent volume restores")
+	restoreCmd.MarkFlagRequired("config-output")
+	restoreCmd.MarkFlagFilename("config-output", "json")
+
+	rootCmd.AddCommand(restoreCmd)
 }
