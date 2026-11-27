@@ -23,8 +23,5 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
-	if err := cli.Execute(ctx); err != nil {
-		os.Exit(1)
-	}
+	os.Exit(cli.Execute(context.Background()))
 }
