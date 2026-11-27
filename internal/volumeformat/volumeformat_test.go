@@ -53,3 +53,29 @@ func TestGetVolumeFormat(t *testing.T) {
 		}
 	}
 }
+
+func TestVolumeFormatString(t *testing.T) {
+	for _, tc := range []struct {
+		v    VolumeFormat
+		want string
+	}{
+		{VolumeFormatRaw, "raw"},
+		{VolumeFormatQCOW2, "qcow2"},
+		{VolumeFormatVMDK, "vmdk"},
+	} {
+		if got := tc.v.String(); got != tc.want {
+			t.Errorf("%v.String() = %q, want %q", tc.v, got, tc.want)
+		}
+	}
+}
+
+func TestVolumeFormatString_PanicOnUnknown(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("expected panic for unknown volume format")
+		}
+	}()
+
+	var unknown VolumeFormat = "unknown"
+	_ = unknown.String()
+}
