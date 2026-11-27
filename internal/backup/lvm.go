@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,54 +17,61 @@ package backup
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
-	"strings"
-	"time"
+	"path"
 
+	"github.com/PextraCloud/pxitool/internal/execu"
+	"github.com/PextraCloud/pxitool/internal/names"
 	"github.com/PextraCloud/pxitool/pkg/log"
 )
 
-func pathToLVMVolume(volumePath string) (string, string) { // vgname, lvname
-	// format: /dev/[vgname]/[lvname]
-	if len(volumePath) < 5 || volumePath[:5] != "/dev/" {
-		return "", ""
+// lvmSnapshotSize is the size of the COW snapshot area used for backups. It must be large enough to absorb writes to
+// the origin during the backup, otherwise, the snapshot will run out of space and the backup will fail.
+// 64M is a reasonable default for most workloads.
+const lvmSnapshotSize = "64M"
+
+// backupLVMVolume backs up an LVM logical volume (sourcePath of the form /dev/<vg>/<lv> or /dev/mapper/<vg>-<lv>) by
+// creating a short-lived snapshot and reading it with `dd`.
+//
+// NOTE: During the backup, writes to the origin volume must not exceed the size of the snapshot
+// (lvmSnapshotSize). If the snapshot runs out of space, the backup will fail. This is a current limitation of
+// LVM snapshots.
+func backupLVMVolume(sourcePath, volumeID, workingDirectory string) (string, error) {
+	vg, lv, ok := names.ExtractLVMNames(sourcePath)
+	if !ok {
+		return "", fmt.Errorf("lvm: unsupported LVM volume path: %q", sourcePath)
 	}
-	// Remove /dev/ prefix
-	volumePath = volumePath[5:]
-	// Split by slash
-	parts := strings.Split(volumePath, "/")
-	if len(parts) != 2 {
-		return "", ""
-	}
-	vgName := parts[0]
-	lvName := parts[1]
 
-	return vgName, lvName
-}
-
-func BackupLVMVolume(volumePath string, writeStream io.Writer) error {
-	vgName, lvName := pathToLVMVolume(volumePath)
-
+	// Generate unique snapshot name
+	snapName := names.UniqueSnapshotName(volumeID, names.LVM_MAX_NAME_LEN)
 	// Create snapshot
-	timestamp := time.Now().Format("20060102150405")
-	snapshotName := fmt.Sprintf("%s-pxitool-%s", lvName, timestamp)
-	createCmd := exec.Command("lvcreate", "--snapshot", "--name", snapshotName, "--size", "64M", fmt.Sprintf("/dev/%s/%s", vgName, lvName))
-
-	if err := createCmd.Run(); err != nil {
-		return fmt.Errorf("failed to create LVM snapshot: %w", err)
+	if out, err := execu.Command("lvcreate", "--snapshot", "--name", snapName,
+		"--size", lvmSnapshotSize, fmt.Sprintf("/dev/%s/%s", vg, lv)).CombinedOutput(); err != nil {
+		return "", fmt.Errorf("lvm: failed to create snapshot for %s: %w\nOutput:\n%s", sourcePath, err, string(out))
 	}
-	// Destroy snapshot after sending
 	defer func() {
-		deleteCmd := exec.Command("lvremove", "-f", fmt.Sprintf("/dev/%s/%s", vgName, snapshotName))
-		if err := deleteCmd.Run(); err != nil {
-			log.Warn("Failed to destroy LVM snapshot %s: %v", snapshotName, err)
+		if out, err := execu.Command("lvremove", "-f", fmt.Sprintf("/dev/%s/%s", vg, snapName)).CombinedOutput(); err != nil {
+			log.Warn("Failed to destroy LVM snapshot %s/%s: %v\nOutput:\n%s", vg, snapName, err, string(out))
 		}
 	}()
 
-	cmd := exec.Command("dd", fmt.Sprintf("if=/dev/%s/%s", vgName, snapshotName), "bs=8M", "status=none")
-	cmd.Stderr = io.MultiWriter(writeStream, io.Discard, io.Writer(os.Stderr)) // Do not specify "of=" so it writes to stdout
-	cmd.Stdout = writeStream
-	return cmd.Run()
+	// Create destination file in working directory
+	destination := path.Join(workingDirectory, volumeID)
+	dest, err := os.Create(destination)
+	if err != nil {
+		return "", fmt.Errorf("lvm: failed to create destination %s: %w", destination, err)
+	}
+	defer dest.Close()
+
+	// Execute the read/write
+	ddCmd := execu.Command("dd", fmt.Sprintf("if=/dev/%s/%s", vg, snapName), "bs=8M", "status=none")
+	// Pipe output to destination file
+	ddCmd.Stdout = dest
+
+	if err := ddCmd.Run(); err != nil {
+		// This may cause dest.Close() to fail, but we ignore that error anyways
+		os.Remove(destination)
+		return "", fmt.Errorf("lvm: failed to read snapshot %s/%s: %w", vg, snapName, err)
+	}
+	return destination, nil
 }

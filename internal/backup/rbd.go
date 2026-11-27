@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,13 +16,54 @@ limitations under the License.
 package backup
 
 import (
-	"io"
-	"os/exec"
+	"fmt"
+	"os"
+	"path"
+
+	"github.com/PextraCloud/pxitool/internal/execu"
+	"github.com/PextraCloud/pxitool/internal/names"
+	"github.com/PextraCloud/pxitool/pkg/log"
 )
 
-func BackupRBDVolume(volumePath string, writeStream io.Writer) error {
-	cmd := exec.Command("rbd", "export", volumePath, "-")
+// backupRBDVolume exports an RBD image to a file in the working directory. The sourcePath must be a valid RBD image path
+// (in the form "pool/image"). The volumeID is used to name the destination file. Returns the path to the exported file.
+func backupRBDVolume(sourcePath, volumeID, workingDirectory string) (string, error) {
+	pool, image, ok := names.ExtractRBDNames(sourcePath)
+	if !ok {
+		return "", fmt.Errorf("rbd: unsupported RBD image path: %q", sourcePath)
+	}
 
-	cmd.Stdout = writeStream
-	return cmd.Run()
+	// Generate unique snapshot name
+	snapName := names.UniqueSnapshotName(volumeID, names.RBD_MAX_NAME_LEN)
+	// Create snapshot
+	if out, err := execu.Command("rbd", "snap", "create", "--snap", snapName, image).CombinedOutput(); err != nil {
+		return "", fmt.Errorf("rbd: failed to create snapshot for %s: %w\nOutput:\n%s", image, err, string(out))
+	}
+	defer func() {
+		// Destroy snapshot on exit (best-effort); unprotect first, then remove.
+		execu.Command("rbd", "snap", "unprotect", "--snap", snapName, image).Run()
+		if out, err := execu.Command("rbd", "snap", "rm", "--snap", snapName, image).CombinedOutput(); err != nil {
+			log.Warn("Failed to remove RBD snapshot %s/%s@%s: %v\nOutput:\n%s", pool, image, snapName, err, string(out))
+		}
+	}()
+
+	// Create destination file in working directory
+	destination := path.Join(workingDirectory, volumeID)
+	dest, err := os.Create(destination)
+	if err != nil {
+		return "", fmt.Errorf("rbd: failed to create destination %s: %w", destination, err)
+	}
+	defer dest.Close()
+
+	// Execute the export
+	exportCmd := execu.Command("rbd", "export", image+"@"+snapName)
+	// Pipe export output to destination file
+	exportCmd.Stdout = dest
+
+	if err := exportCmd.Run(); err != nil {
+		// This may cause dest.Close() to fail, but we ignore that error anyways
+		os.Remove(destination)
+		return "", fmt.Errorf("rbd: failed to export snapshot %s@%s: %w", image, snapName, err)
+	}
+	return destination, nil
 }
