@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,16 +15,9 @@ limitations under the License.
 */
 package createpxi
 
-import (
-	"fmt"
-	"io"
+import "github.com/PextraCloud/pxitool/internal/utils"
 
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunk"
-)
-
-func writeChunk(writer io.Writer, chunk *chunk.Chunk) error {
-	if _, err := writer.Write(chunk.Bytes()); err != nil {
-		return fmt.Errorf("failed to write chunk %s: %v", chunk.ChunkType, err)
-	}
-	return nil
+// CheckEnvironment checks if the required external commands to create a PXI file are available in the environment.
+func CheckEnvironment() error {
+	return utils.CheckEnvironment([]string{"dar", "qemu-img"})
 }
