@@ -1,5 +1,5 @@
 /*
-Copyright 2025 Pextra Inc.
+Copyright 2026 Pextra Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,22 +15,9 @@ limitations under the License.
 */
 package readpxi
 
-import (
-	"bufio"
+import "github.com/PextraCloud/pxitool/internal/utils"
 
-	"github.com/PextraCloud/pxitool/internal/encryption"
-	"github.com/PextraCloud/pxitool/pkg/pxi/chunks/encr"
-)
-
-func getDecryptedReader(buf *bufio.Reader, encrData *encr.Data) (*encryption.DecryptedReader, error) {
-	key, err := encryption.DeriveEncryptionKeyFromSalt(encrData.Salt)
-	if err != nil {
-		return nil, err
-	}
-
-	reader, err := encryption.NewDecryptedReader(buf, key, encrData.Nonce[:])
-	if err != nil {
-		return nil, err
-	}
-	return reader, nil
+// CheckEnvironment checks if the required external commands to read a PXI file are available in the environment.
+func CheckEnvironment() error {
+	return utils.CheckEnvironment([]string{"dar"})
 }
