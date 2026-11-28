@@ -61,17 +61,7 @@ type InstanceVolume struct {
 	StoragePoolId string     `json:"storage_pool_id"`
 	Path          string     `json:"path"`
 	SizeBytes     uint64     `json:"size_bytes"`
-	exclude       bool
-}
-
-// Excluded returns whether the volume is excluded from the PXI archive.
-func (v *InstanceVolume) Exclude() bool {
-	return v.exclude
-}
-
-// SetExclude sets whether the volume is excluded from the PXI archive.
-func (v *InstanceVolume) SetExclude(exclude bool) {
-	v.exclude = exclude
+	Exclude       bool       `json:"exclude,omitempty"`
 }
 
 // Valid checks if the InstanceVolume struct has valid values.

@@ -58,10 +58,10 @@ func TestExcludeVolumes(t *testing.T) {
 		if err := excludeVolumes(instance, []string{"vol1"}); err != nil {
 			t.Fatalf("excludeVolumes() error = %v", err)
 		}
-		if !instance.Resources.Volumes[0].Exclude() {
+		if !instance.Resources.Volumes[0].Exclude {
 			t.Error("vol1 should be excluded")
 		}
-		if instance.Resources.Volumes[1].Exclude() {
+		if instance.Resources.Volumes[1].Exclude {
 			t.Error("vol2 should not be excluded")
 		}
 	})
@@ -71,7 +71,7 @@ func TestExcludeVolumes(t *testing.T) {
 		if err := excludeVolumes(instance, []string{"nonexistent"}); err != nil {
 			t.Fatalf("excludeVolumes() error = %v", err)
 		}
-		if instance.Resources.Volumes[0].Exclude() {
+		if instance.Resources.Volumes[0].Exclude {
 			t.Error("vol1 should not be excluded")
 		}
 	})
@@ -80,7 +80,7 @@ func TestExcludeVolumes(t *testing.T) {
 func TestBackupVolumes(t *testing.T) {
 	t.Run("all volumes excluded", func(t *testing.T) {
 		instance := testInstance(testVolume("vol1", "/tmp/vol1"))
-		instance.Resources.Volumes[0].SetExclude(true)
+		instance.Resources.Volumes[0].Exclude = true
 		paths, err := backupVolumes(instance, t.TempDir(), 2)
 		if err != nil {
 			t.Fatalf("backupVolumes() error = %v", err)
@@ -140,7 +140,7 @@ func TestBackupVolumes(t *testing.T) {
 			t.Fatal(err)
 		}
 		instance := testInstance(testVolume("vol1", p1), testVolume("vol2", "/nonexistent/vol2"))
-		instance.Resources.Volumes[1].SetExclude(true)
+		instance.Resources.Volumes[1].Exclude = true
 
 		paths, err := backupVolumes(instance, t.TempDir(), 2)
 		if err != nil {

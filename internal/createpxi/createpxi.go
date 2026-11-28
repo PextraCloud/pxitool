@@ -28,7 +28,7 @@ import (
 func backupVolumes(instance pxi.Instance, workingDirectory string, concurrency int) ([]string, error) {
 	includedLen := 0
 	for _, volume := range instance.Resources.Volumes {
-		if !volume.Exclude() {
+		if !volume.Exclude {
 			includedLen++
 		}
 	}
@@ -43,7 +43,7 @@ func backupVolumes(instance pxi.Instance, workingDirectory string, concurrency i
 
 	for _, volume := range instance.Resources.Volumes {
 		// Skip excluded volumes
-		if volume.Exclude() {
+		if volume.Exclude {
 			continue
 		}
 
@@ -95,7 +95,7 @@ func excludeVolumes(instance pxi.Instance, excludeVolumes []string) error {
 	// Mark volumes for exclusion based on excludeVolumes list
 	for i := range instance.Resources.Volumes {
 		if _, ok := set[instance.Resources.Volumes[i].Id]; ok {
-			instance.Resources.Volumes[i].SetExclude(true)
+			instance.Resources.Volumes[i].Exclude = true
 		}
 	}
 
