@@ -16,6 +16,7 @@ limitations under the License.
 package dar
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 )
@@ -66,5 +67,13 @@ func (o ExtractOptions) Args() []string {
 func Extract(options ExtractOptions) error {
 	args := options.Args()
 	cmd := exec.Command("dar", args...)
-	return cmd.Run()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to extract dar archive: %w", cmdError(err, stderr))
+	}
+	return nil
+
 }

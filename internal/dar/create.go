@@ -16,6 +16,7 @@ limitations under the License.
 package dar
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -74,10 +75,18 @@ func Create(options CreateOptions) error {
 	options.OutputBasename = strings.TrimSpace(options.OutputBasename)
 
 	args := options.Args()
+
 	cmd := exec.Command("dar", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	if options.OutputBasename == "-" {
 		// Write to stdout
 		cmd.Stdout = os.Stdout
 	}
-	return cmd.Run()
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to create dar archive: %w", cmdError(err, stderr))
+	}
+	return nil
 }

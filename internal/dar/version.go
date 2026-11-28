@@ -16,6 +16,8 @@ limitations under the License.
 package dar
 
 import (
+	"bytes"
+	"fmt"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -34,12 +36,18 @@ type VersionInfo struct {
 
 // Version returns the version information of dar and libdar.
 func Version() (*VersionInfo, error) {
-	outputByte, err := exec.Command("dar", "--version").CombinedOutput()
+
+	var outputByte bytes.Buffer
+	cmd := exec.Command("dar", "--version")
+	cmd.Stdout = &outputByte
+	cmd.Stderr = &outputByte
+
+	err := cmd.Run()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get dar version: %w", cmdError(err, outputByte))
 	}
 
-	output := string(outputByte)
+	output := outputByte.String()
 
 	darVersionMatches := darVersionRegex.FindAllString(output, -1)
 	libdarVersionMatches := libdarVersionRegex.FindAllString(output, -1)

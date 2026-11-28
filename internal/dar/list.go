@@ -16,6 +16,7 @@ limitations under the License.
 package dar
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"os/exec"
@@ -54,13 +55,20 @@ type listXML struct {
 // List lists the contents of a dar archive and returns the names of the files in the archive.
 func List(options ListOptions) ([]string, error) {
 	args := options.Args()
-	out, err := exec.Command("dar", args...).Output()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd := exec.Command("dar", args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list dar archive: %w", err)
+		return nil, fmt.Errorf("failed to list dar archive: %w", cmdError(err, stderr))
 	}
 
 	var catalog listXML
-	if err := xml.Unmarshal(out, &catalog); err != nil {
+	if err := xml.Unmarshal(stdout.Bytes(), &catalog); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal dar archive list: %w", err)
 	}
 
