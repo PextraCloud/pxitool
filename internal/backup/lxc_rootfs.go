@@ -16,6 +16,7 @@ limitations under the License.
 package backup
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -57,21 +58,22 @@ func backupLXCRootfsVolume(sourcePath, volumeID, workingDirectory string) (strin
 		"-cf", "-", ".")
 	// Write tar output to destination file
 	cmd.Stdout = dest
-	cmd.Stderr = os.Stderr
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	err = cmd.Run()
 
 	// Clean up destination file on error
 	if err != nil {
-		var exitErr *exec.ExitError
-		var ok bool
-		if exitErr, ok = err.(*exec.ExitError); !ok {
+		if cmd.ProcessState == nil {
 			// Unexpected error, return
 			// This may cause dest.Close() to fail, but we ignore that error anyways
 			os.Remove(destination)
 			return "", fmt.Errorf("lxc rootfs: tar failed: %w", err)
 		}
 
-		if exitErr.ExitCode() == 0 || exitErr.ExitCode() == 1 {
+		exitCode := cmd.ProcessState.ExitCode()
+		if exitCode == 0 || exitCode == 1 {
 			// tar exited with 0 or 1, which is success or non-fatal warning (see tar(1)).
 			return destination, nil
 		}
